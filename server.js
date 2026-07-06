@@ -1,66 +1,63 @@
 const express = require('express');
 const app = express();
+
+
 app.use(express.json());
 
 const API_TOKEN = "MominSecretToken123!"; 
+let liveServers = {}; // تخزين السيرفرات الحية
 
-// ذاكرة لتخزين السيرفرات بناءً على كودها القصير الجديد
-let liveServers = {};
-
-// 1. استقبال تحديث اللاعبين من روبلوكس باستخدام الكود القصير
+// مسار استقبال البيانات من روبلوكس
 app.post('/api/servers/:serverCode/players', (req, res) => {
+    const { serverCode } = req.params;
+    const { playersList } = req.body; 
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token || token !== API_TOKEN) {
-        return res.status(401).json({ error: "Unauthorized: Invalid Token" });
+    if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
+        return res.status(401).json({ error: "غير مصرح لك بالدخول!" });
     }
 
-    const { serverCode } = req.params; // يستقبل الكود القصير مثل abq-1db
-    const { playersList } = req.body;
+    // حساب عدد اللاعبين في كل فريق تلقائياً
+    let teamsCounter = {};
+    playersList.forEach(player => {
+        // لو الفريق مش موجود في العداد، نبدأه بـ 0 ونزيده 1
+        teamsCounter[player.team] = (teamsCounter[player.team] || 0) + 1;
+    });
 
-    if (!playersList) {
-        return res.status(400).json({ error: "Missing playersList" });
-    }
-
-    // حفظ البيانات بالكود القصير
+    // حفظ البيانات الجديدة بالسيرفر
     liveServers[serverCode] = {
-        players: playersList,
+        serverCode: serverCode,
+        totalPlayers: playersList.length,
+        teamsSummary: teamsCounter, // يظهر كم شرطي وكم مسعف أونلاين
+        players: playersList, // يظهر لستة اللاعبين مع أتيامهم
         lastUpdated: new Date()
     };
 
-    console.log(`[روبلوكس] تم تحديث السيرفر [${serverCode}] - اللاعبين:`, playersList);
-    return res.json({ success: true, message: "Server updated" });
+    console.log(`[روبلوكس] تم تحديث السيرفر [${serverCode}] - الإجمالي: ${playersList.length}`);
+    res.json({ success: true, message: "تم تحديث الأتيام بنجاح" });
 });
 
-// 2. جلب اللاعبين لأي سيرفر عن طريق كوده القصير
+// مسار جلب البيانات (للمتصفح وبوت الديسكورد)
 app.get('/api/servers/:serverCode/players', (req, res) => {
     const { serverCode } = req.params;
+    const serverData = liveServers[serverCode];
 
-    if (!liveServers[serverCode]) {
-        return res.status(404).json({ error: "هذا السيرفر غير موجود أو تم إغلاقه" });
+    if (!serverData) {
+        return res.status(404).json({ error: "هذا السيرفر غير موجود حالياً أو مغلق" });
     }
 
-    return res.json({
-        serverCode: serverCode,
-        totalPlayers: liveServers[serverCode].players.length,
-        players: liveServers[serverCode].players
-    });
+    res.json(serverData);
 });
 
-// 3. حذف السيرفر عند الإغلاق
+// حذف السيرفر عند الإغلاق
 app.delete('/api/servers/:serverCode', (req, res) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token === API_TOKEN) {
-        const { serverCode } = req.params;
+    const { serverCode } = req.params;
+    if (liveServers[serverCode]) {
         delete liveServers[serverCode];
-        console.log(`[روبلوكس] تم إغلاق وحذف السيرفر: ${serverCode}`);
-        return res.json({ success: true });
+        console.log(`[روبلوكس] تم إغلاق السيرفر وحذفه: ${serverCode}`);
     }
-    return res.status(401).json({ error: "Unauthorized" });
+    res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`السيرفر يعمل الآن على المنفذ ${PORT}`));
+app.listen(PORT, () => console.log(`السيرفر يعمل الآن وتحديث الأتيام جاهز!`));
