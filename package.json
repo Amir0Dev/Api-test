@@ -1,10 +1,11 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "",
+  "description": "��#\u0000 \u0000A\u0000p\u0000i\u0000-\u0000t\u0000e\u0000s\u0000t\u0000\r\u0000 \u0000",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -13,5 +14,17 @@
   "dependencies": {
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2"
-  }
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amir0Dev/Api-test.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Amir0Dev/Api-test/issues"
+  },
+  "homepage": "https://github.com/Amir0Dev/Api-test#readme"
 }
