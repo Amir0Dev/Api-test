@@ -1,30 +1,25 @@
 const express = require('express');
 
+
 const app = express();
+
 app.use(express.json());
 
-// 🔴 إعدادات الحماية والـ OAuth2 الخاصة بك
 const API_TOKEN = "MominSecretToken123!"; 
 const CLIENT_ID = "8623887428915616165";
 const CLIENT_SECRET = "RBX-lwLlBBgNf06EqDj4IEbb9QO9yusPshCjnRlUKHSoWE-8N-bveUWaB6BxDDy5zOHz";
 const REDIRECT_URI = "https://api-test-production-c8fc.up.railway.app/oauth/callback";
 
-// 👥 قائمة معرفات الأدمنية المصرح لهم بدخول اللوحة (عدلها بأرقام الآيديات الحقيقية)
 const ALLOWED_ADMINS = [
-    2748615471, // مثال لايدي أدمن
-    1,        // مثال آخر
+    2748615471,
+    1,
 ];
 
-let liveServers = {};      // تخزين بيانات السيرفرات واللاعبين
-let commandsQueue = {};    // تخزين الأوامر المنتظرة لكل سيرفر
-let oauthStates = {};      // تتبع عمليات تسجيل الدخول المؤقتة { state: { status, adminData } }
-let activeAdmins = {};     // إدارة جلسات الأدمنية الحاليين { userId: { name, status, serverCode } }
+let liveServers = {};      
+let commandsQueue = {};    
+let oauthStates = {};      
+let activeAdmins = {};     
 
-// ==========================================
-// 🔐 مسارات الـ OAuth2 والتحقق من الهوية
-// ==========================================
-
-// 1. بدء عملية تسجيل الدخول
 app.get('/oauth/login', (req, res) => {
     const { state } = req.query;
     if (!state) return res.status(400).send("Missing state parameter");
@@ -35,7 +30,6 @@ app.get('/oauth/login', (req, res) => {
     res.redirect(robloxAuthUrl);
 });
 
-// 2. استقبال الرد من روبلوكس ومعالجة التوكن
 app.get('/oauth/callback', async (req, res) => {
     const { code, state } = req.query;
     if (!code || !state || !oauthStates[state]) {
@@ -43,7 +37,6 @@ app.get('/oauth/callback', async (req, res) => {
     }
 
     try {
-        // تبادل الـ Code بالـ Access Token
         const tokenResponse = await fetch("https://apis.roblox.com/oauth/v1/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -59,7 +52,6 @@ app.get('/oauth/callback', async (req, res) => {
         const tokenData = await tokenResponse.json();
         if (!tokenData.access_token) throw new Error("Failed to get access token");
 
-        // جلب معلومات المستخدم الأساسية من روبلوكس
         const userResponse = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
             headers: { "Authorization": `Bearer ${tokenData.access_token}` }
         });
@@ -68,7 +60,6 @@ app.get('/oauth/callback', async (req, res) => {
         const robloxUserId = parseInt(userData.sub);
         const robloxUsername = userData.preferred_username || userData.name;
 
-        // التحقق من وجود المعرف في قائمة الإدارة المصرحة
         if (!ALLOWED_ADMINS.includes(robloxUserId)) {
             oauthStates[state] = { status: "unauthorized", adminData: null };
             return res.send(`
@@ -79,7 +70,6 @@ app.get('/oauth/callback', async (req, res) => {
             `);
         }
 
-        // تسجيل الدخول بنجاح وتوثيق الجلسة
         oauthStates[state] = {
             status: "success",
             adminData: { userId: robloxUserId, username: robloxUsername }
@@ -100,25 +90,19 @@ app.get('/oauth/callback', async (req, res) => {
     }
 });
 
-// 3. فحص حالة التحقق من جهة التطبيق (Polling)
 app.get('/api/auth/status', (req, res) => {
     const { state } = req.query;
     if (!state || !oauthStates[state]) return res.json({ status: "unknown" });
 
     const session = oauthStates[state];
     if (session.status === "success") {
-        // نقل الأدمن إلى قائمة الإدارة النشطة بوضعية "خارج النوبة" افتراضياً
         const { userId, username } = session.adminData;
         if (!activeAdmins[userId]) {
-            activeAdmins[userId] = { userId, username, status: "off_duty", serverCode: null };
+            activeAdmins[userId] = { userId, username, status: "offline", serverCode: null, updatedAt: new Date().toISOString() };
         }
     }
     res.json(session);
 });
-
-// ==========================================
-// 👔 نظام إدارة النوبات (Duty System)
-// ==========================================
 
 app.post('/api/admin/duty', (req, res) => {
     const { userId, action, serverCode } = req.body;
@@ -132,39 +116,34 @@ app.post('/api/admin/duty', (req, res) => {
         const server = liveServers[serverCode];
         if (!server) return res.status(404).json({ error: "السيرفر المطلوب غير نشط حالياً" });
 
-        // التحقق من أن الأدمن متواجد فعلياً داخل خريطة اللعبة/السيرفر
-        const isIngame = server.players.some(p => Number(p.userId) === Number(userId));
-        if (!isIngame) {
-            return res.status(403).json({ error: "🚨 لا يمكنك بدء النوبة! يجب أن تكون متواجداً بشخصيتك داخل الماب أولاً." });
-        }
-
         admin.status = "on_duty";
         admin.serverCode = serverCode;
+        admin.updatedAt = new Date().toISOString();
         return res.json({ success: true, status: "on_duty" });
     }
 
     if (action === "break") {
+        if (admin.status !== "on_duty") {
+            return res.status(400).json({ error: "لا يمكنك أخذ استراحة دون بدء النوبة أولاً!" });
+        }
         admin.status = "break";
+        admin.updatedAt = new Date().toISOString();
         return res.json({ success: true, status: "break" });
     }
 
     if (action === "stop") {
-        admin.status = "off_duty";
+        admin.status = "stop";
         admin.serverCode = null;
+        admin.updatedAt = new Date().toISOString();
         return res.json({ success: true, status: "off_duty" });
     }
 
     res.status(400).json({ error: "إجراء غير معروف" });
 });
 
-// جلب قائمة الطاقم الإداري الحالي وحالتهم لسيرفر معين
 app.get('/api/admin/staff', (req, res) => {
     res.json({ staff: Object.values(activeAdmins) });
 });
-
-// ==========================================
-// 🛡️ مسارات التحكم والسيرفر العادية
-// ==========================================
 
 app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
     const { serverCode } = req.params;
@@ -185,7 +164,7 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
         totalPlayers: playersList.length,
         teamsSummary: teamsCounter,
         players: playersList,
-        lastUpdated: new Date()
+        lastUpdated: Date.now()
     };
 
     const pendingCommands = commandsQueue[serverCode] || [];
@@ -198,14 +177,8 @@ app.post('/api/servers/:serverCode/commands', (req, res) => {
     const { serverCode } = req.params;
     const { action, target, reason, duration, senderId } = req.body;
 
-    // قيود حماية على السيرفر: التأكد أن مرسل الأمر أدمن وفي وضعية النوبة
-    const admin = activeAdmins[senderId];
-    if (!admin || admin.status !== "on_duty" || admin.serverCode !== serverCode) {
-        return res.status(403).json({ error: "غير مصرح لك بالإشراف! يجب بدء النوبة داخل هذا السيرفر أولاً." });
-    }
-
     if (!commandsQueue[serverCode]) commandsQueue[serverCode] = [];
-    commandsQueue[serverCode].push({ action, target, reason, duration });
+    commandsQueue[serverCode].push({ action, target, reason, duration, senderId });
     
     res.json({ success: true });
 });
@@ -222,16 +195,34 @@ app.delete('/api/servers/:serverCode', (req, res) => {
     delete liveServers[serverCode];
     delete commandsQueue[serverCode];
     
-    // إخراج أي أدمن كان يراقب هذا السيرفر تلقائياً لوضعية خارج النوبة
     Object.values(activeAdmins).forEach(admin => {
         if(admin.serverCode === serverCode) {
-            admin.status = "off_duty";
+            admin.status = "stop";
             admin.serverCode = null;
+            admin.updatedAt = new Date().toISOString();
         }
     });
 
     res.json({ success: true });
 });
 
+setInterval(() => {
+    const now = Date.now();
+    Object.keys(liveServers).forEach(serverCode => {
+        if (now - liveServers[serverCode].lastUpdated > 7000) {
+            delete liveServers[serverCode];
+            delete commandsQueue[serverCode];
+
+            Object.values(activeAdmins).forEach(admin => {
+                if (admin.serverCode === serverCode) {
+                    admin.status = "stop";
+                    admin.serverCode = null;
+                    admin.updatedAt = new Date().toISOString();
+                }
+            });
+        }
+    });
+}, 3000);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`سيرفر الإدارة المركزي النشط يعمل على منفذ ${PORT}`));
+app.listen(PORT, () => console.log(`سيرفر الإدارة المركزي يعمل على منفذ ${PORT}`));
