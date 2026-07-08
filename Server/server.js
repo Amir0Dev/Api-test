@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 
-
 require("dotenv").config({
     path: path.join(__dirname, "../.env"),
     quiet: true
@@ -13,12 +12,10 @@ app.use(express.json());
 const frontendPath = path.join(__dirname, '..', 'Frontend');
 app.use(express.static(frontendPath));
 
-
-
-const API_TOKEN = process.env.ApiToken
-const CLIENT_ID = process.env.ClientId
-const CLIENT_SECRET = process.env.ClientSecret
-const REDIRECT_URI = process.env.RedirectURI
+const API_TOKEN = process.env.ApiToken;
+const CLIENT_ID = process.env.ClientId;
+const CLIENT_SECRET = process.env.ClientSecret;
+const REDIRECT_URI = process.env.RedirectURI;
 
 console.log("API_TOKEN:", API_TOKEN);
 console.log("CLIENT_ID:", CLIENT_ID);
@@ -55,10 +52,11 @@ function smartRateLimiter(req, res, next) {
     next();
 }
 
+// 🛠️ تم الإصلاح هنا: استخدام الـ Optional Chaining لضمان عدم الانهيار في طلبات الـ GET
 function verifyAdminAccess(req, res, next) {
-    const adminId = parseInt(req.body.senderId || req.body.userId || req.query.senderId || req.query.userId);
+    const adminId = parseInt(req.body?.senderId || req.body?.userId || req.query?.senderId || req.query?.userId);
     
-    if (!adminId || !ALLOWED_ADMINS.includes(adminId)) {
+    if (!adminId || isNaN(adminId) || !ALLOWED_ADMINS.includes(adminId)) {
         return res.status(403).json({ error: "وصول غير مصرح به، ليس لديك صلاحية للقيام بهذا الإجراء" });
     }
     
@@ -203,15 +201,17 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
     }
 
     let teamsCounter = {};
-    playersList.forEach(player => {
-        teamsCounter[player.team] = (teamsCounter[player.team] || 0) + 1;
-    });
+    if (Array.isArray(playersList)) {
+        playersList.forEach(player => {
+            teamsCounter[player.team] = (teamsCounter[player.team] || 0) + 1;
+        });
+    }
 
     liveServers[serverCode] = {
         serverCode: serverCode,
-        totalPlayers: playersList.length,
+        totalPlayers: Array.isArray(playersList) ? playersList.length : 0,
         teamsSummary: teamsCounter,
-        players: playersList,
+        players: playersList || [],
         lastUpdated: Date.now()
     };
 
@@ -345,5 +345,10 @@ setInterval(() => {
     });
 }, 3000);
 
+app.use((err, req, res, next) => {
+    console.error("Global Catch Error:", err.stack);
+    res.status(500).json({ error: "حدث خطأ داخلي غير متوقع في الخادم" });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(PORT));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

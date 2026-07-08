@@ -14,12 +14,16 @@
             background: rgba(17, 24, 39, 0.7);
             border: 1px solid rgba(51, 65, 85, 0.4);
         }
-        .toast-notif { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .toast-notif { animation: slideIn 0.3s ease-out forwards;
         }
-        button:active { transform: scale(0.97); }
+        @keyframes slideIn {
+            from { transform: translateY(10px);
+            opacity: 0; }
+            to { transform: translateY(0); opacity: 1;
+            }
+        }
+        button:active { transform: scale(0.97);
+        }
     </style>
 </head>
 <body class="min-h-screen p-6 relative">
@@ -35,7 +39,7 @@
                 <p>• The login page will open in an external browser and verify automatically upon completion.</p>
             </div>
             <button onclick="startRobloxOAuth()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-950 font-semibold py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
-                <span>Login with Roblox</span> 🔑
+                <span>Login with Roblox</span>
             </button>
             <div id="authStatusText" class="text-xs text-slate-500 animate-pulse hidden">Waiting for authentication in external browser...</div>
         </div>
@@ -87,13 +91,16 @@
                     <span>Central Admin System</span>
                     <span id="adminBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700 font-normal hidden">Loading...</span>
                 </h1>
-                <p class="text-xs text-slate-500 mt-1">Live Updates | Silent Control System</p>
+                <p class="text-xs text-slate-500 mt-1">Live Updates | Silent Control System <span id="scheduledShutdownInfo" class="text-amber-500 font-medium ml-1"></span></p>
             </div>
         </div>
         
         <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
             <input id="serverCodeInput" type="text" placeholder="SERVER CODE..." class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300 uppercase">
             <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
+            <input id="scheduleTimeInput" type="datetime-local" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs focus:outline-none focus:border-slate-600 transition-all text-slate-300 w-full md:w-auto">
+            <button id="scheduleShutdownBtn" onclick="scheduleShutdown()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto">Schedule Shutdown</button>
+            <button id="cancelScheduleBtn" onclick="cancelScheduledShutdown()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto hidden">Cancel Schedule</button>
             <button id="shutdownBtn" onclick="shutdownServer()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Shutdown Server</button>
         </div>
     </div>
@@ -157,6 +164,8 @@
         let currentAdmin = null;         
         let adminDutyStatus = "offline";
         const avatarCache = new Map();
+        let playerModalInterval = null;
+        let currentModalUserId = null;
 
         window.addEventListener('beforeunload', () => {
             if (currentAdmin && adminDutyStatus === "on_duty") {
@@ -222,11 +231,11 @@
                             startStaffMonitoring();
                         } else if (data.status === "unauthorized") {
                             clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "❌ Your account is not whitelisted in the authorized admin list!";
+                            document.getElementById('authStatusText').innerText = "Your account is not whitelisted in the authorized admin list!";
                             document.getElementById('authStatusText').style.color = "#ef4444";
                         } else if (data.status === "failed") {
                             clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "❌ Authentication failed, please try again.";
+                            document.getElementById('authStatusText').innerText = "Authentication failed, please try again.";
                             document.getElementById('authStatusText').style.color = "#ef4444";
                         }
                     });
@@ -238,12 +247,12 @@
             const serverCode = document.getElementById('serverCodeInput').value.trim();
 
             if (actionType === "start" && !serverCode) {
-                createToast("🚨 You must enter a server code and connect before starting your shift!");
+                createToast("You must enter a server code and connect before starting your shift!");
                 return;
             }
 
             if (actionType === "break" && adminDutyStatus !== "on_duty") {
-                createToast("🚨 You cannot take a break without starting your shift first!");
+                createToast("You cannot take a break without starting your shift first!");
                 return;
             }
 
@@ -264,11 +273,11 @@
                 
                 if (data.status === "on_duty") {
                     badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
-                    badge.innerText = "On Duty ⚡";
+                    badge.innerText = "On Duty";
                     createToast("Your live admin shift has started successfully.");
                 } else if (data.status === "break") {
                     badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
-                    badge.innerText = "On Break ☕";
+                    badge.innerText = "On Break";
                     createToast("You are now on a temporary break.");
                 } else {
                     badge.className = "text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800";
@@ -285,7 +294,7 @@
         }
 
         function fetchStaffData() {
-            fetch(`${BASE_URL}/api/admin/staff`)
+            fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin ? currentAdmin.userId : 0}`)
                 .then(res => res.json())
                 .then(data => {
                     const container = document.getElementById('staffContainer');
@@ -371,15 +380,23 @@
         }
 
         function shutdownServer() {
+            if (adminDutyStatus !== "on_duty") {
+                createToast("Action Denied! You must be On Duty to shutdown the server.");
+                return;
+            }
             const serverCode = document.getElementById('serverCodeInput').value.trim();
             if (!serverCode) {
                 createToast("Please enter a server code first.");
                 return;
             }
+            
+            const confirmDecision = confirm("Are you sure you want to shut down this server?");
+            if (!confirmDecision) return;
+
             fetch(`${BASE_URL}/api/servers/${serverCode}/commands`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'shutdown', senderId: currentAdmin ? currentAdmin.userId : 0 })
+                body: JSON.stringify({ action: 'shutdown', target: 'all', senderId: currentAdmin ? currentAdmin.userId : 0 })
             }).then(async res => {
                 if(!res.ok) {
                     createToast("Failed to send shutdown server command.");
@@ -390,11 +407,56 @@
             });
         }
 
-        function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
-            if (adminDutyStatus !== "on_duty") {
-                createToast("🚫 Action Denied! You must be On Duty to open the player control menu.");
+        function scheduleShutdown() {
+            if (adminDutyStatus !== "on_duty" || !currentAdmin) {
+                createToast("Action Denied! You must be On Duty to schedule a shutdown.");
                 return;
             }
+            const serverCode = document.getElementById('serverCodeInput').value.trim();
+            const timeString = document.getElementById('scheduleTimeInput').value;
+            if (!serverCode || !timeString) {
+                createToast("Please enter a server code and select a valid time.");
+                return;
+            }
+            fetch(`${BASE_URL}/api/servers/${serverCode}/schedule-shutdown`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ timeString: timeString, senderId: currentAdmin.userId })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    createToast(data.error);
+                } else {
+                    createToast(data.message);
+                    document.getElementById('cancelScheduleBtn').classList.remove('hidden');
+                }
+            });
+        }
+
+        function cancelScheduledShutdown() {
+            const serverCode = document.getElementById('serverCodeInput').value.trim();
+            if (!serverCode || !currentAdmin) return;
+            fetch(`${BASE_URL}/api/servers/${serverCode}/schedule-shutdown?userId=${currentAdmin.userId}`, {
+                method: 'DELETE'
+            }).then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    createToast(data.error);
+                } else {
+                    createToast(data.message);
+                    document.getElementById('cancelScheduleBtn').classList.add('hidden');
+                    document.getElementById('scheduledShutdownInfo').innerText = '';
+                }
+            });
+        }
+
+        function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
+            if (adminDutyStatus !== "on_duty") {
+                createToast("Action Denied! You must be On Duty to open the player control menu.");
+                return;
+            }
+            currentModalUserId = userId;
+            
             document.getElementById('modalPlayerName').innerText = pName;
             document.getElementById('modalPlayerTeam').innerText = team;
             let h = Math.floor(timeInGame / 3600);
@@ -423,10 +485,49 @@
 
             toggleModalBanForm(false);
             document.getElementById('playerModal').classList.remove('hidden');
+
+            if (playerModalInterval) clearInterval(playerModalInterval);
+            playerModalInterval = setInterval(fetchAndUpdateModalPlayer, 2000);
+        }
+
+        function fetchAndUpdateModalPlayer() {
+            if (!currentAdmin || !currentModalUserId) return;
+            const serverCode = document.getElementById('serverCodeInput').value.trim();
+            if (!serverCode) return;
+
+            fetch(`${BASE_URL}/api/servers/${serverCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}`)
+                .then(res => res.json())
+                .then(player => {
+                    if (player.error) {
+                        document.getElementById('modalPlayerVehicle').innerText = "Player left server";
+                        clearInterval(playerModalInterval);
+                        return;
+                    }
+                    document.getElementById('modalPlayerTeam').innerText = player.team;
+                    let h = Math.floor(player.timeInGame / 3600);
+                    let m = Math.floor((player.timeInGame % 3600) / 60);
+                    let s = Math.floor(player.timeInGame % 60);
+                    document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+                    document.getElementById('modalPlayerVehicle').innerText = player.inVehicle ? "Yes" : "No";
+                    
+                    const freezeBtn = document.getElementById('modalFreezeBtn');
+                    if (player.isFrozen) {
+                        freezeBtn.innerText = "Unfreeze";
+                        freezeBtn.onclick = () => { sendAction(player.name, 'unfreeze'); closePlayerModal(); };
+                    } else {
+                        freezeBtn.innerText = "Freeze";
+                        freezeBtn.onclick = () => { sendAction(player.name, 'freeze'); closePlayerModal(); };
+                    }
+                }).catch(() => {});
         }
 
         function closePlayerModal() {
             document.getElementById('playerModal').classList.add('hidden');
+            if (playerModalInterval) {
+                clearInterval(playerModalInterval);
+                playerModalInterval = null;
+            }
+            currentModalUserId = null;
         }
 
         function toggleModalBanForm(show) {
@@ -465,8 +566,7 @@
                             createToast("🚫 Access Denied! Your account is not whitelisted or session expired.");
                             stopMonitoring();
                         } else {
-                            // ستطبع الاستجابة الرقم القادم من السيرفر مباشرة لمعرفته فوراً
-                            createToast(`⚠️ An error occurred while fetching server data. (Status: ${res.status})`);
+                            createToast("⚠️ An error occurred while fetching server data.");
                             stopMonitoring();
                         }
                         throw new Error("Fetch failed");
@@ -567,7 +667,7 @@
 
         function sendAction(playerName, actionType) {
             if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("🚫 You cannot send commands; you are not currently on duty.");
+                createToast("You cannot send commands; you are not currently on duty.");
                 return;
             }
             const serverCode = document.getElementById('serverCodeInput').value.trim();
@@ -578,7 +678,7 @@
             }).then(async res => {
                 if(!res.ok) {
                     const err = await res.json();
-                    createToast(`❌ Error: ${err.error}`);
+                    createToast(`Error: ${err.error}`);
                     return;
                 }
                 createToast(`Command executed successfully for player ${playerName}.`);
