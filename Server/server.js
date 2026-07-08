@@ -1,9 +1,12 @@
 const express = require('express');
-
+const path = require('path'); // 1️⃣ أضفنا موديل الـ path للتعامل مع المجلدات بشكل صحيح
 
 const app = express();
 
 app.use(express.json());
+
+// 2️⃣ السطر السحري: لتشغيل كود الـ HTML والـ CSS من مجلد FrontEnd كموقع ويب
+app.use(express.static(path.join(__dirname, '..', 'Frontend')));
 
 const API_TOKEN = "MominSecretToken123!"; 
 const CLIENT_ID = "8623887428915616165";
