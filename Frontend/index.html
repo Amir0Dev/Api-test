@@ -548,14 +548,28 @@
             const serverCode = document.getElementById('serverCodeInput').value.trim();
             if (!serverCode) return;
 
-            fetch(`${BASE_URL}/api/servers/${serverCode}/players?userId=${currentAdmin ? currentAdmin.userId : 0}`)
+            // 1. التحقق من تسجيل الدخول أولاً لمنع التعليق والطلب الخاطئ
+            if (!currentAdmin) {
+                createToast("🚫 Please login with Roblox first!");
+                stopMonitoring();
+                return;
+            }
+
+            // 2. إرسال الطلب مع الـ userId الحقيقي الخاص بالأدمن
+            fetch(`${BASE_URL}/api/servers/${serverCode}/players?userId=${currentAdmin.userId}`)
                 .then(res => {
                     if (!res.ok) {
                         if (res.status === 404) {
                             createToast("Target server has been shut down or expired.");
                             stopMonitoring();
+                        } else if (res.status === 403) {
+                            createToast("🚫 Access Denied! Your account is not whitelisted or session expired.");
+                            stopMonitoring();
+                        } else {
+                            createToast("⚠️ An error occurred while fetching server data.");
+                            stopMonitoring();
                         }
-                        throw new Error();
+                        throw new Error("Fetch failed");
                     }
                     return res.json();
                 })
@@ -563,14 +577,6 @@
                     document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
                     const playersList = data.players || [];
                     
-                    if (data.scheduledShutdown) {
-                        document.getElementById('scheduledShutdownInfo').innerText = `| Shutdown scheduled at: ${data.scheduledShutdown.time}`;
-                        document.getElementById('cancelScheduleBtn').classList.remove('hidden');
-                    } else {
-                        document.getElementById('scheduledShutdownInfo').innerText = '';
-                        document.getElementById('cancelScheduleBtn').classList.add('hidden');
-                    }
-
                     if (playersList.length === 0) {
                         document.getElementById('noPlayersMessage').classList.remove('hidden');
                         document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
@@ -634,7 +640,9 @@
                             loadAndApplyAvatar(pUserId, imgEl);
                         }
                     });
-                }).catch(() => {});
+                }).catch((err) => {
+                    console.error("Console Error Log:", err);
+                });
         }
 
         async function resolveAvatar(userId) {

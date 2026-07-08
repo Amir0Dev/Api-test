@@ -13,10 +13,17 @@ app.use(express.json());
 const frontendPath = path.join(__dirname, '..', 'Frontend');
 app.use(express.static(frontendPath));
 
+
+
 const API_TOKEN = process.env.ApiToken
 const CLIENT_ID = process.env.ClientId
 const CLIENT_SECRET = process.env.ClientSecret
 const REDIRECT_URI = process.env.RedirectURI
+
+console.log("API_TOKEN:", API_TOKEN);
+console.log("CLIENT_ID:", CLIENT_ID);
+console.log("CLIENT_SECRET:", CLIENT_SECRET);
+console.log("REDIRECT_URI:", REDIRECT_URI);
 
 const ALLOWED_ADMINS = [
     2748615471,
