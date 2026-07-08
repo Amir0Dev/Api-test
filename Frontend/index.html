@@ -1,598 +1,446 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Manager Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>لوحة التحكم الإدارية المركزية</title>
     <style>
         body {
-            background-color: #090d16;
-            color: #cbd5e1;
-            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #020617;
+            color: #f1f5f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
         }
-        .panel {
-            background: rgba(17, 24, 39, 0.7);
-            border: 1px solid rgba(51, 65, 85, 0.4);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        .toast-notif { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .card {
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
-        button:active { transform: scale(0.97); }
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-danger {
+            background-color: #dc2626;
+        }
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #1e293b;
+        }
+        th {
+            background-color: #1e293b;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #0f172a;
+            padding: 30px;
+            border-radius: 8px;
+            width: 400px;
+            border: 1px solid #1e293b;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 4px;
+        }
     </style>
 </head>
-<body class="min-h-screen p-6 relative">
+<body>
 
-    <div id="loginScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center">
-        <div class="panel p-8 rounded-2xl max-w-md w-full text-center space-y-6 shadow-2xl border border-slate-800">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-100">Central Administration Portal</h2>
-                <p class="text-xs text-slate-400 mt-2">Please authenticate your administrative identity via Roblox Unified Audit System</p>
+<div class="container">
+    <div class="card">
+        <h2>نظام تسجيل الدخول والتحقق الرقمي</h2>
+        <div id="auth-section">
+            <button class="btn" onclick="startOAuthLogin()">تسجيل الدخول عبر روبلوكس</button>
+        </div>
+        <div id="admin-info" style="display: none;">
+            <p>مرحبا بك: <span id="admin-username"></span> (المعرف: <span id="current-admin-id"></span>)</p>
+            <div class="form-group" style="display: inline-block; width: 200px;">
+                <select id="duty-server-select">
+                    <option value="">اختر السيرفر لبدء النوبة</option>
+                </select>
             </div>
-            <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-left text-xs space-y-2 text-slate-400">
-                <p>• The system requires OpenID read permission.</p>
-                <p>• The login page will open in an external browser and verify automatically upon completion.</p>
-            </div>
-            <button onclick="startRobloxOAuth()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-950 font-semibold py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
-                <span>Login with Roblox</span> 🔑
-            </button>
-            <div id="authStatusText" class="text-xs text-slate-500 animate-pulse hidden">Waiting for authentication in external browser...</div>
+            <button class="btn" onclick="updateDutyStatus('start')">بدء النوبة</button>
+            <button class="btn" onclick="updateDutyStatus('break')">استراحة</button>
+            <button class="btn btn-danger" onclick="updateDutyStatus('stop')">إنهاء النوبة</button>
+            <p>حالتك الحالية: <span id="duty-status-text">خارج النوبة</span></p>
         </div>
     </div>
 
-    <div id="playerModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
-        <div class="panel p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl border border-slate-800">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
-                    <img id="modalAvatar" src="" class="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 object-cover">
-                    <span id="modalPlayerName"></span>
-                </h3>
-                <button onclick="closePlayerModal()" class="text-slate-500 hover:text-slate-400 text-lg">✕</button>
-            </div>
-            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
-                <div class="flex justify-between"><span>Team / Role:</span><span id="modalPlayerTeam" class="text-slate-400"></span></div>
-                <div class="flex justify-between"><span>Time in Game:</span><span id="modalPlayerTime" class="text-slate-400 font-mono"></span></div>
-                <div class="flex justify-between"><span>In Vehicle:</span><span id="modalPlayerVehicle" class="text-slate-400"></span></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <button id="modalKickBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors">Kick</button>
-                <button id="modalFreezeBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors"></button>
-                <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">Bring</button>
-                <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">To Player</button>
-            </div>
-            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban from Server</button>
-            <div id="modalBanForm" class="hidden flex-col gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                <input id="modalBanReason" type="text" placeholder="Ban reason..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <input id="modalBanDuration" type="number" placeholder="Duration in seconds..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <div class="flex gap-2 mt-1">
-                    <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs transition-colors">Confirm Ban</button>
-                    <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800 transition-colors">Cancel</button>
-                </div>
-            </div>
+    <div class="grid">
+        <div class="card">
+            <h3>السيرفرات النشطة حاليا</h3>
+            <div id="servers-list"></div>
         </div>
-    </div>
 
-    <div id="notificationContainer" class="fixed bottom-6 left-6 z-50 space-y-3 w-80 pointer-events-none"></div>
-
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 panel p-5 rounded-xl shadow-lg relative">
-        <div class="flex items-center gap-4">
-            <div id="adminProfileHeader" class="hidden items-center gap-3 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl shadow-md">
-                <img id="adminHeaderAvatar" src="" class="w-8 h-8 rounded-full border border-slate-700 object-cover">
-                <span id="adminHeaderName" class="text-sm font-semibold text-slate-200"></span>
-            </div>
-            
-            <div>
-                <h1 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                    <span>Central Admin System</span>
-                    <span id="adminBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700 font-normal hidden">Loading...</span>
-                </h1>
-                <p class="text-xs text-slate-500 mt-1">Live Updates | Silent Control System</p>
-            </div>
-        </div>
-        
-        <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <input id="serverCodeInput" type="text" placeholder="SERVER CODE..." class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300 uppercase">
-            <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
-            <button id="shutdownBtn" onclick="shutdownServer()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Shutdown Server</button>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="space-y-6">
-            <div class="panel rounded-xl p-5 shadow-lg space-y-4">
-                <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Personal Duty Control</span>
-                    <span id="dutyStatusBadge" class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">offline</span>
-                </h2>
+        <div class="card">
+            <h3>لوحة التحكم بالسيرفر واللاعبين</h3>
+            <div id="server-controls" style="display: none;">
+                <h4>السيرفر المحدد: <span id="selected-server-code"></span></h4>
+                <p id="scheduled-shutdown-info" style="color: #f59e0b; font-weight: bold;"></p>
                 
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="updateDuty('start')" class="bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-900 text-emerald-400 text-xs py-2.5 rounded-lg font-medium transition-all">Start Shift</button>
-                    <button onclick="updateDuty('break')" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-900 text-amber-400 text-xs py-2.5 rounded-lg font-medium transition-all">Break</button>
-                    <button onclick="updateDuty('stop')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 text-xs py-2.5 rounded-lg font-medium transition-all">End Shift</button>
-                </div>
-            </div>
-
-            <div class="panel rounded-xl p-5 shadow-lg">
-                <h2 class="text-sm font-semibold mb-3 text-slate-300">Active Staff Status</h2>
-                <div id="staffContainer" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs">
-                    <p class="text-slate-600 text-center py-2">No active staff online currently</p>
-                </div>
-            </div>
-
-            <div class="panel rounded-xl p-5 shadow-lg">
-                <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
-                <div id="teamsContainer" class="space-y-2 text-xs">
-                    <p class="text-slate-600 text-center py-4">Waiting for server connection...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
-                <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Live Monitoring</span>
-            </div>
-            
-            <div class="overflow-x-auto flex-1">
-                <table class="w-full text-left" id="mainTable">
+                <button class="btn btn-danger" onclick="triggerServerShutdown()">إغلاق السيرفر بالكامل</button>
+                <button class="btn" onclick="openScheduleModal()">جدولة إغلاق السيرفر</button>
+                <button class="btn btn-danger" id="cancel-schedule-btn" style="display: none;" onclick="cancelScheduledShutdown()">إلغاء الإغلاق المجدول</button>
+                
+                <table id="players-table">
                     <thead>
-                        <tr class="border-b border-slate-800 text-slate-500 text-xs">
-                            <th class="pb-3 pl-4 font-medium">Player Name</th>
-                            <th class="pb-3 font-medium">Role / Team</th>
+                        <tr>
+                            <th>اسم اللاعب</th>
+                            <th>الفريق</th>
+                            <th>راكب سيارة</th>
+                            <th>الإجراءات</th>
                         </tr>
                     </thead>
+                    <tbody id="players-list-body"></tbody>
                 </table>
-                <div id="noPlayersMessage" class="text-sm text-slate-600 text-center py-12">Please enter the target server code and connect to start monitoring.</div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // السطر الجديد لجعل الكود يقرأ مسار السيرفر الحالي تلقائياً سواء localhost أو الـ Host الخارجي
-        const BASE_URL = window.location.origin;
-        const ROBLOX_THUMBNAILS_API = "https://thumbnails.roblox.com/v1/users/avatar-headshot";
-        const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%231e293b'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%2347556a'/%3E%3Cellipse cx='16' cy='26' rx='9' ry='6' fill='%2347556a'/%3E%3C/svg%3E";
+<div id="player-modal" class="modal">
+    <div class="modal-content">
+        <h3>تفاصيل وبيانات اللاعب المحدثة</h3>
+        <p>الاسم: <span id="modal-player-name"></span></p>
+        <p>المعرف: <span id="modal-player-id"></span></p>
+        <p>الفريق الحالي: <span id="modal-player-team"></span></p>
+        <p>حالة ركوب السيارة: <span id="modal-player-vehicle"></span></p>
+        <button class="btn" onclick="closePlayerModal()">إغلاق النافذة</button>
+    </div>
+</div>
 
-        let autoFetchInterval = null;
-        let staffInterval = null;
-        let currentAdmin = null;         
-        let adminDutyStatus = "offline"; 
-        const avatarCache = new Map();
+<div id="schedule-modal" class="modal">
+    <div class="modal-content">
+        <h3>جدولة إغلاق السيرفر</h3>
+        <div class="form-group">
+            <label>اختر وقت وتاريخ الإغلاق</label>
+            <input type="datetime-local" id="schedule-time-input">
+        </div>
+        <button class="btn" onclick="submitScheduledShutdown()">تأكيد الجدولة</button>
+        <button class="btn btn-danger" onclick="closeScheduleModal()">إلغاء</button>
+    </div>
+</div>
 
-        window.addEventListener('beforeunload', () => {
-            if (currentAdmin && adminDutyStatus === "on_duty") {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", `${BASE_URL}/api/admin/duty`, false);
-                xhr.setRequestHeader("Content-Type", "application/json");
-                xhr.send(JSON.stringify({ userId: currentAdmin.userId, action: 'stop', serverCode: document.getElementById('serverCodeInput').value.trim() }));
-            }
-        });
+<script>
+    let currentAdmin = null;
+    let oauthState = null;
+    let selectedServer = null;
+    let activePlayerInterval = null;
+    let selectedPlayerId = null;
 
-        function generateRandomState(length = 16) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
+    function generateState() {
+        return Math.random().toString(36).substring(2, 15);
+    }
 
-        function formatElapsed(timestamp) {
-            if (!timestamp) return "";
-            const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
-            if (diff < 0) return "0s";
-            const h = Math.floor(diff / 3600);
-            const m = Math.floor((diff % 3600) / 60);
-            const s = diff % 60;
-            if (h > 0) return `${h}h ${m}m ago`;
-            if (m > 0) return `${m}m ${s}s ago`;
-            return `${s}s ago`;
-        }
-
-        function startRobloxOAuth() {
-            const state = generateRandomState();
-            document.getElementById('authStatusText').classList.remove('hidden');
-            
-            // فتح نافذة الـ OAuth في المتصفح بشكل طبيعي متوافق مع الويب
-            window.open(`${BASE_URL}/oauth/login?state=${state}`, '_blank');
-
-            const checkInterval = setInterval(() => {
-                fetch(`${BASE_URL}/api/auth/status?state=${state}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === "success") {
-                            clearInterval(checkInterval);
-                            currentAdmin = data.adminData;
-                            document.getElementById('loginScreen').classList.add('hidden');
-                            document.getElementById('adminBadge').innerText = `${currentAdmin.username}`;
-                            
-                            const profileHeader = document.getElementById('adminProfileHeader');
-                            if (profileHeader) {
-                                document.getElementById('adminHeaderName').innerText = currentAdmin.username;
-                                const avatarUrl = `${ROBLOX_THUMBNAILS_API}?userIds=${currentAdmin.userId}&size=150x150&format=Png&isCircular=true`;
-                                fetch(avatarUrl)
-                                    .then(r => r.json())
-                                    .then(resData => {
-                                        document.getElementById('adminHeaderAvatar').src = resData?.data?.[0]?.imageUrl || PLACEHOLDER_AVATAR;
-                                    }).catch(() => {
-                                        document.getElementById('adminHeaderAvatar').src = PLACEHOLDER_AVATAR;
-                                    });
-                                profileHeader.classList.remove('hidden');
-                                profileHeader.classList.add('flex');
-                            }
-
-                            createToast(`Welcome ${currentAdmin.username}, authenticated successfully.`);
-                            startStaffMonitoring();
-                        } else if (data.status === "unauthorized") {
-                            clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "❌ Your account is not whitelisted in the authorized admin list!";
-                            document.getElementById('authStatusText').style.color = "#ef4444";
-                        } else if (data.status === "failed") {
-                            clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "❌ Authentication failed, please try again.";
-                            document.getElementById('authStatusText').style.color = "#ef4444";
-                        }
-                    });
-            }, 2000);
-        }
-
-        function updateDuty(actionType) {
-            if (!currentAdmin) return;
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-
-            if (actionType === "start" && !serverCode) {
-                createToast("🚨 You must enter a server code and connect before starting your shift!");
-                return;
-            }
-
-            if (actionType === "break" && adminDutyStatus !== "on_duty") {
-                createToast("🚨 You cannot take a break without starting your shift first!");
-                return;
-            }
-
-            fetch(`${BASE_URL}/api/admin/duty`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: currentAdmin.userId, action: actionType, serverCode: serverCode })
-            })
-            .then(async res => {
-                const data = await res.json();
-                if (!res.ok) {
-                    createToast(data.error || "Failed to update duty status.");
-                    return;
-                }
-                
-                adminDutyStatus = data.status;
-                const badge = document.getElementById('dutyStatusBadge');
-                
-                if (data.status === "on_duty") {
-                    badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
-                    badge.innerText = "On Duty ⚡";
-                    createToast("Your live admin shift has started successfully.");
-                } else if (data.status === "break") {
-                    badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
-                    badge.innerText = "On Break ☕";
-                    createToast("You are now on a temporary break.");
-                } else {
-                    badge.className = "text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800";
-                    badge.innerText = "offline";
-                    createToast("Admin shift ended.");
-                }
-                fetchStaffData();
-            });
-        }
-
-        function startStaffMonitoring() {
-            fetchStaffData();
-            staffInterval = setInterval(fetchStaffData, 3000);
-        }
-
-        function fetchStaffData() {
-            fetch(`${BASE_URL}/api/admin/staff`)
+    function startOAuthLogin() {
+        oauthState = generateState();
+        localStorage.setItem('oauth_state', oauthState);
+        window.open(`/oauth/login?state=${oauthState}`, '_blank', 'width=600,height=600');
+        
+        const checkStatus = setInterval(() => {
+            fetch(`/api/auth/status?state=${oauthState}`)
                 .then(res => res.json())
                 .then(data => {
-                    const container = document.getElementById('staffContainer');
-                    container.innerHTML = '';
-                    if (!data.staff || data.staff.length === 0) {
-                        container.innerHTML = `<p class="text-slate-600 text-center py-2">No active staff online currently</p>`;
-                        return;
+                    if (data.status === 'success') {
+                        clearInterval(checkStatus);
+                        currentAdmin = data.adminData;
+                        setupAdminUI();
+                    } else if (data.status === 'unauthorized' || data.status === 'failed') {
+                        clearInterval(checkStatus);
+                        alert('فشل تسجيل الدخول أو حسابك غير مصرح له');
                     }
-                    data.staff.forEach(member => {
-                        let statusText = "offline";
-                        let statusClass = "text-slate-500";
-                        let timeStr = formatElapsed(member.updatedAt);
-
-                        if (member.status === "on_duty") { 
-                            statusText = `Started Shift (${member.serverCode || 'Unknown Server'}) ${timeStr}`; 
-                            statusClass = "text-emerald-400 font-medium"; 
-                        } else if (member.status === "break") { 
-                            statusText = `On Break ${timeStr}`; 
-                            statusClass = "text-amber-400"; 
-                        } else if (member.status === "stop" || member.status === "off_duty") {
-                            statusText = `Ended Shift ${timeStr}`;
-                            statusClass = "text-slate-400";
-                        }
-
-                        container.innerHTML += `
-                            <div class="flex justify-between items-center bg-slate-900/40 p-2 rounded border border-slate-800/60">
-                                <span class="text-slate-300 font-mono">${member.username}</span>
-                                <span class="${statusClass}">${statusText}</span>
-                            </div>`;
-                    });
                 });
+        }, 3000);
+    }
+
+    function setupAdminUI() {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('admin-info').style.display = 'block';
+        document.getElementById('admin-username').innerText = currentAdmin.username;
+        document.getElementById('current-admin-id').innerText = currentAdmin.userId;
+        loadActiveServers();
+        setInterval(loadActiveServers, 5000);
+    }
+
+    function updateDutyStatus(action) {
+        const serverCode = document.getElementById('duty-server-select').value;
+        if (action === 'start' && !serverCode) {
+            alert('يجب تحديد السيرفر أولا لبدء النوبة');
+            return;
         }
 
-        function createToast(message) {
-            const container = document.getElementById('notificationContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast-notif p-4 rounded-lg text-xs shadow-lg border pointer-events-auto flex items-center justify-between bg-slate-900 border-slate-800 text-slate-300`;
-            toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-slate-400">✕</button>`;
-            container.appendChild(toast);
-            setTimeout(() => { toast.remove(); }, 3500);
-        }
-
-        function toggleAutoFetch() {
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-            const connectBtn = document.getElementById('connectBtn');
-
-            if (!serverCode) {
-                createToast("Please enter a server code first.");
-                return;
-            }
-
-            if (autoFetchInterval) {
-                stopMonitoring();
-                createToast("Live monitoring stopped.");
-                return;
-            }
-
-            document.getElementById('liveBadge').classList.remove('hidden');
-            document.getElementById('noPlayersMessage').innerText = "Fetching live data...";
-            
-            fetchData();
-            autoFetchInterval = setInterval(fetchData, 2000);
-
-            connectBtn.innerText = "Disconnect";
-            connectBtn.className = "bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
-            createToast("Live monitoring started.");
-        }
-
-        function stopMonitoring() {
-            clearInterval(autoFetchInterval);
-            autoFetchInterval = null;
-            const connectBtn = document.getElementById('connectBtn');
-            connectBtn.innerText = "Connect";
-            connectBtn.className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
-            document.getElementById('liveBadge').classList.add('hidden');
-            document.querySelectorAll('.player-group').forEach(el => el.remove());
-            document.getElementById('totalPlayersCount').innerText = "0";
-            document.getElementById('noPlayersMessage').classList.remove('hidden');
-            document.getElementById('noPlayersMessage').innerText = "Please enter the target server code and connect to start monitoring.";
-            
-            if (adminDutyStatus === "on_duty") {
-                updateDuty('stop');
-            }
-        }
-
-        function shutdownServer() {
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-            if (!serverCode) {
-                createToast("Please enter a server code first.");
-                return;
-            }
-            fetch(`${BASE_URL}/api/servers/${serverCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'shutdown', senderId: currentAdmin ? currentAdmin.userId : 0 })
-            }).then(async res => {
-                if(!res.ok) {
-                    createToast("Failed to send shutdown server command.");
-                    return;
-                }
-                createToast("Server shutdown command sent successfully.");
-                stopMonitoring();
-            });
-        }
-
-        function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
-            if (adminDutyStatus !== "on_duty") {
-                createToast("🚫 Action Denied! You must be On Duty to open the player control menu.");
-                return;
-            }
-            document.getElementById('modalPlayerName').innerText = pName;
-            document.getElementById('modalPlayerTeam').innerText = team;
-
-            let h = Math.floor(timeInGame / 3600);
-            let m = Math.floor((timeInGame % 3600) / 60);
-            let s = Math.floor(timeInGame % 60);
-            document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
-            document.getElementById('modalPlayerVehicle').innerText = inVehicle ? "Yes" : "No";
-
-            const freezeBtn = document.getElementById('modalFreezeBtn');
-            if (isFrozen) {
-                freezeBtn.innerText = "Unfreeze";
-                freezeBtn.onclick = () => { sendAction(pName, 'unfreeze'); closePlayerModal(); };
+        fetch('/api/admin/duty', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentAdmin.userId,
+                action: action,
+                serverCode: serverCode
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
             } else {
-                freezeBtn.innerText = "Freeze";
-                freezeBtn.onclick = () => { sendAction(pName, 'freeze'); closePlayerModal(); };
+                document.getElementById('duty-status-text').innerText = data.status;
             }
+        });
+    }
 
-            document.getElementById('modalKickBtn').onclick = () => { sendAction(pName, 'kick'); closePlayerModal(); };
-            document.getElementById('modalBringBtn').onclick = () => { sendAction(pName, 'bring'); closePlayerModal(); };
-            document.getElementById('modalToBtn').onclick = () => { sendAction(pName, 'to'); closePlayerModal(); };
-            document.getElementById('modalBanConfirmBtn').onclick = () => sendBan(pName);
+    function loadActiveServers() {
+        if (!currentAdmin) return;
+        
+        fetch(`/api/admin/staff?userId=${currentAdmin.userId}`)
+            .then(res => res.json())
+            .then(() => {
+                return fetch('/api/servers/dummy/players?userId=' + currentAdmin.userId);
+            })
+            .catch(() => {})
+            
+        fetch('/api/admin/staff?userId=' + currentAdmin.userId);
+        
+        const select = document.getElementById('duty-server-select');
+        const currentSelected = select.value;
+        
+        select.innerHTML = '<option value="">اختر السيرفر لبدء النوبة</option>';
+        const listDiv = document.getElementById('servers-list');
+        listDiv.innerHTML = '';
 
-            const imgEl = document.getElementById('modalAvatar');
-            imgEl.src = PLACEHOLDER_AVATAR;
-            loadAndApplyAvatar(userId, imgEl);
+        fetch('/api/admin/staff?userId=' + currentAdmin.userId)
+            .then(res => res.json())
+            .then(data => {
+                const servers = {};
+                data.staff.forEach(s => {
+                    if (s.serverCode) servers[s.serverCode] = true;
+                });
+                
+                Object.keys(servers).forEach(code => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.innerText = code;
+                    if (code === currentSelected) option.selected = true;
+                    select.appendChild(option);
 
-            toggleModalBanForm(false);
-            document.getElementById('playerModal').classList.remove('hidden');
+                    const btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.style.margin = '5px';
+                    btn.innerText = `عرض السيرفر: ${code}`;
+                    btn.onclick = () => selectServerForControl(code);
+                    listDiv.appendChild(btn);
+                });
+            });
+    }
+
+    function selectServerForControl(serverCode) {
+        selectedServer = serverCode;
+        document.getElementById('server-controls').style.display = 'block';
+        document.getElementById('selected-server-code').innerText = serverCode;
+        updateServerUI();
+    }
+
+    function updateServerUI() {
+        if (!selectedServer || !currentAdmin) return;
+
+        fetch(`/api/servers/${selectedServer}/players?userId=${currentAdmin.userId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const infoText = document.getElementById('scheduled-shutdown-info');
+                const cancelBtn = document.getElementById('cancel-schedule-btn');
+                
+                if (data.scheduledShutdown) {
+                    infoText.innerText = `تم جدولة إغلاق السيرفر في الوقت التالي: ${data.scheduledShutdown.time}`;
+                    cancelBtn.style.display = 'inline-block';
+                } else {
+                    infoText.innerText = '';
+                    cancelBtn.style.display = 'none';
+                }
+
+                const tbody = document.getElementById('players-list-body');
+                tbody.innerHTML = '';
+
+                data.players.forEach(player => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${player.name}</td>
+                        <td>${player.team}</td>
+                        <td>${player.isDriving ? 'Yes' : 'No'}</td>
+                        <td>
+                            <button class="btn" onclick="openPlayerModal('${player.userId}')">مراقبة وتحديث تلقائي</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    setInterval(() => {
+        if (selectedServer) updateServerUI();
+    }, 5000);
+
+    function triggerServerShutdown() {
+        const checkDecision = confirm('هل أنت متأكد من قرار إغلاق هذا السيرفر نهائيا؟');
+        if (!checkDecision) return;
+
+        fetch(`/api/servers/${selectedServer}/commands`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'shutdown',
+                target: 'all',
+                senderId: currentAdmin.userId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) alert(data.error);
+            else alert('تم إرسال أمر الإغلاق للسيرفر بنجاح');
+        });
+    }
+
+    function openScheduleModal() {
+        document.getElementById('schedule-modal').style.display = 'flex';
+    }
+
+    function closeScheduleModal() {
+        document.getElementById('schedule-modal').style.display = 'none';
+    }
+
+    function submitScheduledShutdown() {
+        const timeString = document.getElementById('schedule-time-input').value;
+        if (!timeString) {
+            alert('يرجى تحديد الوقت أولا');
+            return;
         }
 
-        function closePlayerModal() {
-            document.getElementById('playerModal').classList.add('hidden');
-        }
-
-        function toggleModalBanForm(show) {
-            const form = document.getElementById('modalBanForm');
-            const tabBtn = document.getElementById('modalBanTabBtn');
-            if (show) {
-                form.classList.replace('hidden', 'flex');
-                tabBtn.classList.add('hidden');
+        fetch(`/api/servers/${selectedServer}/schedule-shutdown`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                timeString: timeString,
+                senderId: currentAdmin.userId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
             } else {
-                form.classList.replace('flex', 'hidden');
-                tabBtn.classList.remove('hidden');
-                document.getElementById('modalBanReason').value = '';
-                document.getElementById('modalBanDuration').value = '';
+                alert(data.message);
+                closeScheduleModal();
+                updateServerUI();
             }
-        }
+        });
+    }
 
-        function fetchData() {
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-            if (!serverCode) return;
-
-            fetch(`${BASE_URL}/api/servers/${serverCode}/players`)
-                .then(res => {
-                    if (!res.ok) {
-                        if (res.status === 404) {
-                            createToast("Target server has been shut down or expired.");
-                            stopMonitoring();
-                        }
-                        throw new Error();
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
-                    const playersList = data.players || [];
-                    
-                    if (playersList.length === 0) {
-                        document.getElementById('noPlayersMessage').classList.remove('hidden');
-                        document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
-                        document.querySelectorAll('.player-group').forEach(el => el.remove());
-                        return;
-                    }
-
-                    document.getElementById('noPlayersMessage').classList.add('hidden');
-
-                    const teamsContainer = document.getElementById('teamsContainer');
-                    teamsContainer.innerHTML = '';
-                    const summary = data.teamsSummary || {};
-                    for (const [teamName, count] of Object.entries(summary)) {
-                        teamsContainer.innerHTML += `
-                            <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center">
-                                <span class="text-slate-300">${teamName}</span>
-                                <span class="text-slate-400 font-mono text-sm">${count}</span>
-                            </div>`;
-                    }
-
-                    const tableMain = document.getElementById('mainTable');
-                    const fetchedNames = playersList.map(p => p.name);
-
-                    document.querySelectorAll('.player-group').forEach(group => {
-                        if (!fetchedNames.includes(group.getAttribute('data-name'))) {
-                            group.remove();
-                        }
-                    });
-
-                    playersList.forEach(player => {
-                        const pName = player.name;
-                        const pUserId = player.userId || 1;
-                        const pTime = player.timeInGame || 0;
-                        const pVehicle = player.inVehicle || false;
-                        const pFrozen = player.isFrozen || false;
-                        
-                        const existingGroup = document.getElementById(`player-group-${pName}`);
-
-                        if (existingGroup) {
-                            document.getElementById(`team-${pName}`).innerText = player.team;
-                            existingGroup.onclick = () => openPlayerModal(pName, player.team, pTime, pVehicle, pFrozen, pUserId);
-                            const img = existingGroup.querySelector(`#avatar-${pName}`);
-                            if (img && img.src.startsWith('data:') && avatarCache.has(String(pUserId))) {
-                                img.src = avatarCache.get(String(pUserId));
-                            }
-                        } else {
-                            const html = `
-                                <tbody id="player-group-${pName}" data-name="${pName}" class="player-group">
-                                    <tr onclick="openPlayerModal('${pName}', '${player.team}', ${pTime}, ${pVehicle}, ${pFrozen}, ${pUserId})" class="border-b border-slate-900/60 cursor-pointer hover:bg-slate-900/30 transition-colors">
-                                        <td class="py-3 pl-4 flex items-center gap-3">
-                                            <img id="avatar-${pName}" src="${PLACEHOLDER_AVATAR}" class="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800 shadow-sm flex-shrink-0" alt="Avatar">
-                                            <span class="text-sm text-slate-300">${pName}</span>
-                                        </td>
-                                        <td class="py-3">
-                                            <span id="team-${pName}" class="text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${player.team}</span>
-                                        </td>
-                                    </tr>
-                                </tbody>`;
-                            tableMain.insertAdjacentHTML('beforeend', html);
-
-                            const imgEl = document.getElementById(`avatar-${pName}`);
-                            loadAndApplyAvatar(pUserId, imgEl);
-                        }
-                    });
-                }).catch(() => {});
-        }
-
-        async function resolveAvatar(userId) {
-            const key = String(userId);
-            if (avatarCache.has(key)) return avatarCache.get(key);
-            try {
-                const res = await fetch(`${ROBLOX_THUMBNAILS_API}?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
-                if (!res.ok) throw new Error();
-                const json = await res.json();
-                const url = json?.data?.[0]?.state === "Completed" ? json.data[0].imageUrl : PLACEHOLDER_AVATAR;
-                avatarCache.set(key, url);
-                return url;
-            } catch {
-                return PLACEHOLDER_AVATAR;
+    function cancelScheduledShutdown() {
+        fetch(`/api/servers/${selectedServer}/schedule-shutdown?userId=${currentAdmin.userId}`, {
+            method: 'DELETE'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(data.message);
+                updateServerUI();
             }
-        }
+        });
+    }
 
-        async function loadAndApplyAvatar(userId, imgElement) {
-            const url = await resolveAvatar(userId);
-            if (url && imgElement && imgElement.isConnected) imgElement.src = url;
-        }
+    function openPlayerModal(playerId) {
+        selectedPlayerId = playerId;
+        document.getElementById('player-modal').style.display = 'flex';
+        
+        fetchAndUpdateSinglePlayer();
+        
+        activePlayerInterval = setInterval(fetchAndUpdateSinglePlayer, 2000);
+    }
 
-        function sendAction(playerName, actionType) {
-            if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("🚫 You cannot send commands; you are not currently on duty.");
-                return;
-            }
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-            fetch(`${BASE_URL}/api/servers/${serverCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: actionType, target: playerName, senderId: currentAdmin.userId })
-            }).then(async res => {
-                if(!res.ok) {
-                    const err = await res.json();
-                    createToast(`❌ Error: ${err.error}`);
+    function fetchAndUpdateSinglePlayer() {
+        if (!selectedPlayerId || !selectedServer || !currentAdmin) return;
+
+        fetch(`/api/servers/${selectedServer}/players/${selectedPlayerId}?userId=${currentAdmin.userId}`)
+            .then(res => res.json())
+            .then(player => {
+                if (player.error) {
+                    document.getElementById('modal-player-vehicle').innerText = 'غادر اللاعب السيرفر';
+                    clearInterval(activePlayerInterval);
                     return;
                 }
-                createToast(`Command executed successfully for player ${playerName}.`);
+                document.getElementById('modal-player-name').innerText = player.name;
+                document.getElementById('modal-player-id').innerText = player.userId;
+                document.getElementById('modal-player-team').innerText = player.team;
+                document.getElementById('modal-player-vehicle').innerText = player.isDriving ? 'Yes' : 'No';
+            })
+            .catch(() => {
+                clearInterval(activePlayerInterval);
             });
-        }
+    }
 
-        function sendBan(playerName) {
-            if (adminDutyStatus !== "on_duty" || !currentAdmin) return;
-            const serverCode = document.getElementById('serverCodeInput').value.trim();
-            const reasonText = document.getElementById('modalBanReason').value.trim() || "Rules Violation";
-            const durationText = document.getElementById('modalBanDuration').value.trim() || "-1";
-
-            fetch(`${BASE_URL}/api/servers/${serverCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ban', target: playerName, reason: reasonText, duration: durationText, senderId: currentAdmin.userId })
-            }).then(async res => {
-                if(!res.ok) {
-                    createToast("Failed to execute Ban command.");
-                    return;
-                }
-                createToast(`Ban command executed successfully for player ${playerName}.`);
-            });
+    function closePlayerModal() {
+        document.getElementById('player-modal').style.display = 'none';
+        if (activePlayerInterval) {
+            clearInterval(activePlayerInterval);
+            activePlayerInterval = null;
         }
-    </script>
+        selectedPlayerId = null;
+    }
+</script>
+
 </body>
 </html>
