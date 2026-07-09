@@ -7,7 +7,6 @@ require("dotenv").config({
 });
 
 const app = express();
-
 app.use(express.json());
 const frontendPath = path.join(__dirname, '..', 'Frontend');
 app.use(express.static(frontendPath));
@@ -62,7 +61,7 @@ app.use('/api/servers/:serverCode/commands', smartRateLimiter);
 
 app.get('/oauth/login', (req, res) => {
     const { state } = req.query;
-    if (!state) return res.status(400).send("Missing state parameter");
+    if (!state) return res.status(400).send("Missing state");
 
     oauthStates[state] = { status: "pending", adminData: null };
 
@@ -135,9 +134,7 @@ app.get('/api/auth/status', (req, res) => {
 app.post('/api/admin/disconnect', (req, res) => {
     const { userId } = req.body;
     if (userId && activeAdmins[userId]) {
-        activeAdmins[userId].status = "offline";
-        activeAdmins[userId].serverCode = null;
-        activeAdmins[userId].updatedAt = new Date().toISOString();
+        delete activeAdmins[userId];
     }
     res.json({ success: true });
 });
@@ -192,18 +189,17 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
         }
     }
 
-    Object.values(activeAdmins).forEach(admin => {
-        if (admin.status !== "offline" && (!admin.lastSeen || now - admin.lastSeen > 7000)) {
-            admin.status = "offline";
-            admin.serverCode = null;
-            admin.updatedAt = new Date().toISOString();
+    Object.keys(activeAdmins).forEach(userId => {
+        const admin = activeAdmins[userId];
+        if (!admin.lastSeen || now - admin.lastSeen > 7000) {
+            delete activeAdmins[userId];
         }
     });
 
     let staffArr = Object.values(activeAdmins);
     staffArr.sort((a, b) => {
-        const order = { "on_duty": 1, "break": 2, "online": 3, "offline": 4 };
-        return (order[a.status] || 5) - (order[b.status] || 5);
+        const order = { "on_duty": 1, "break": 2, "online": 3 };
+        return (order[a.status] || 4) - (order[b.status] || 4);
     });
     res.json({ staff: staffArr });
 });
@@ -224,7 +220,12 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
         });
     }
 
+    if (!liveServers[serverCode]) {
+        liveServers[serverCode] = { startTime: Date.now() };
+    }
+
     liveServers[serverCode] = {
+        startTime: liveServers[serverCode].startTime,
         serverCode: serverCode,
         totalPlayers: Array.isArray(playersList) ? playersList.length : 0,
         teamsSummary: teamsCounter,
@@ -259,23 +260,17 @@ app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
 
 app.post('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
-    const { days, hours, minutes, senderId } = req.body;
+    const { targetTimestamp, senderId } = req.body;
 
     const admin = activeAdmins[senderId];
     if (!admin || admin.status !== "on_duty" || admin.serverCode !== serverCode) {
-        return res.status(403).json({ error: "يجب أن تكون في النوبة لجدولة الإغلاق" });
+        return res.status(403).json({ error: "Duty required for this action" });
     }
 
-    const dMs = (parseInt(days) || 0) * 24 * 60 * 60 * 1000;
-    const hMs = (parseInt(hours) || 0) * 60 * 60 * 1000;
-    const mMs = (parseInt(minutes) || 0) * 60 * 1000;
-    const totalOffset = dMs + hMs + mMs;
-
-    if (totalOffset <= 0) {
-        return res.status(400).json({ error: "يرجى تحديد وقت مستقبلي صالح" });
+    if (!targetTimestamp || targetTimestamp <= Date.now()) {
+        return res.status(400).json({ error: "Please select a valid future time" });
     }
 
-    const targetTimestamp = Date.now() + totalOffset;
     const d = new Date(targetTimestamp);
     const formattedTime = d.toLocaleString([], { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -285,18 +280,18 @@ app.post('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, 
         senderId: senderId
     };
 
-    res.json({ success: true, message: `تم جدولة الإغلاق بنجاح في: ${formattedTime}` });
+    res.json({ success: true, message: `Scheduled shutdown at: ${formattedTime}` });
 });
 
 app.delete('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
     
     if (!scheduledShutdowns[serverCode]) {
-        return res.status(404).json({ error: "لا يوجد إغلاق مجدول لهذا السيرفر" });
+        return res.status(404).json({ error: "No scheduled shutdown found" });
     }
 
     delete scheduledShutdowns[serverCode];
-    res.json({ success: true, message: "تم إلغاء الإغلاق المجدول بنجاح" });
+    res.json({ success: true, message: "Scheduled shutdown cancelled" });
 });
 
 app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
@@ -333,23 +328,6 @@ app.get('/api/avatar/:userId', async (req, res) => {
     } catch (error) {
         res.redirect("https://tr.rbxcdn.com/3b43a29ce73ed72b47b2c554a938c5d6/150/150/AvatarHeadshot/Png");
     }
-});
-
-app.delete('/api/servers/:serverCode', (req, res) => {
-    const { serverCode } = req.params;
-    delete liveServers[serverCode];
-    delete commandsQueue[serverCode];
-    delete scheduledShutdowns[serverCode];
-    
-    Object.values(activeAdmins).forEach(admin => {
-        if(admin.serverCode === serverCode) {
-            admin.status = "online";
-            admin.serverCode = null;
-            admin.updatedAt = new Date().toISOString();
-        }
-    });
-
-    res.json({ success: true });
 });
 
 setInterval(() => {
