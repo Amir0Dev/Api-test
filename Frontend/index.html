@@ -14,34 +14,21 @@
             background: rgba(17, 24, 39, 0.7);
             border: 1px solid rgba(51, 65, 85, 0.4);
         }
-        .toast-notif { animation: slideIn 0.3s ease-out forwards;
-        }
+        .toast-notif { animation: slideIn 0.3s ease-out forwards; }
         @keyframes slideIn {
-            from { transform: translateY(10px);
-            opacity: 0; }
-            to { transform: translateY(0); opacity: 1;
-            }
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        button:active { transform: scale(0.97);
-        }
+        button:active { transform: scale(0.97); }
     </style>
 </head>
 <body class="min-h-screen p-6 relative">
 
     <div id="loginScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center">
-        <div class="panel p-8 rounded-2xl max-w-md w-full text-center space-y-6 shadow-2xl border border-slate-800">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-100">Central Administration Portal</h2>
-                <p class="text-xs text-slate-400 mt-2">Please authenticate your administrative identity via Roblox Unified Audit System</p>
-            </div>
-            <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-left text-xs space-y-2 text-slate-400">
-                <p>• The system requires OpenID read permission.</p>
-                <p>• The login page will open in an external browser and verify automatically upon completion.</p>
-            </div>
-            <button onclick="startRobloxOAuth()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-950 font-semibold py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
-                <span>Login with Roblox</span>
-            </button>
-            <div id="authStatusText" class="text-xs text-slate-500 animate-pulse hidden">Waiting for authentication in external browser...</div>
+        <div class="panel p-6 rounded-lg border border-slate-800 text-center max-w-sm w-full shadow-2xl">
+            <p class="text-slate-300 text-sm mb-4">Please sign in to send an unban request.</p>
+            <button onclick="startRobloxOAuth()" class="text-blue-500 hover:text-blue-400 text-sm underline transition-colors">Sign in</button>
+            <div id="authStatusText" class="text-xs text-slate-500 mt-4 hidden"></div>
         </div>
     </div>
 
@@ -98,7 +85,7 @@
         <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
             <input id="serverCodeInput" type="text" placeholder="SERVER CODE..." class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300 uppercase">
             <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
-            <input id="scheduleTimeInput" type="datetime-local" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs focus:outline-none focus:border-slate-600 transition-all text-slate-300 w-full md:w-auto">
+            <input id="scheduleTimeInput" type="time" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs focus:outline-none focus:border-slate-600 transition-all text-slate-300 w-full md:w-auto">
             <button id="scheduleShutdownBtn" onclick="scheduleShutdown()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto">Schedule Shutdown</button>
             <button id="cancelScheduleBtn" onclick="cancelScheduledShutdown()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto hidden">Cancel Schedule</button>
             <button id="shutdownBtn" onclick="shutdownServer()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Shutdown Server</button>
@@ -157,13 +144,11 @@
 
     <script>
         const BASE_URL = window.location.origin;
-        const ROBLOX_THUMBNAILS_API = "https://thumbnails.roblox.com/v1/users/avatar-headshot";
         const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%231e293b'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%2347556a'/%3E%3Cellipse cx='16' cy='26' rx='9' ry='6' fill='%2347556a'/%3E%3C/svg%3E";
         let autoFetchInterval = null;
         let staffInterval = null;
         let currentAdmin = null;         
         let adminDutyStatus = "offline";
-        const avatarCache = new Map();
         let playerModalInterval = null;
         let currentModalUserId = null;
 
@@ -197,6 +182,13 @@
             return `${s}s ago`;
         }
 
+        function setDutyStatusOnline() {
+            adminDutyStatus = "online";
+            const badge = document.getElementById('dutyStatusBadge');
+            badge.className = "text-[10px] bg-blue-950/40 text-blue-400 px-2 py-0.5 rounded border border-blue-900/50";
+            badge.innerText = "online";
+        }
+
         function startRobloxOAuth() {
             const state = generateRandomState();
             document.getElementById('authStatusText').classList.remove('hidden');
@@ -215,28 +207,20 @@
                             const profileHeader = document.getElementById('adminProfileHeader');
                             if (profileHeader) {
                                 document.getElementById('adminHeaderName').innerText = currentAdmin.username;
-                                const avatarUrl = `${ROBLOX_THUMBNAILS_API}?userIds=${currentAdmin.userId}&size=150x150&format=Png&isCircular=true`;
-                                fetch(avatarUrl)
-                                    .then(r => r.json())
-                                    .then(resData => {
-                                        document.getElementById('adminHeaderAvatar').src = resData?.data?.[0]?.imageUrl || PLACEHOLDER_AVATAR;
-                                    }).catch(() => {
-                                        document.getElementById('adminHeaderAvatar').src = PLACEHOLDER_AVATAR;
-                                    });
+                                document.getElementById('adminHeaderAvatar').src = `${BASE_URL}/api/avatar/${currentAdmin.userId}`;
                                 profileHeader.classList.remove('hidden');
                                 profileHeader.classList.add('flex');
                             }
 
                             createToast(`Welcome ${currentAdmin.username}, authenticated successfully.`);
+                            setDutyStatusOnline();
                             startStaffMonitoring();
                         } else if (data.status === "unauthorized") {
                             clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "Your account is not whitelisted in the authorized admin list!";
-                            document.getElementById('authStatusText').style.color = "#ef4444";
+                            document.getElementById('authStatusText').innerText = "Auth status: Unauthorized";
                         } else if (data.status === "failed") {
                             clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "Authentication failed, please try again.";
-                            document.getElementById('authStatusText').style.color = "#ef4444";
+                            document.getElementById('authStatusText').innerText = "Auth status: Failed";
                         }
                     });
             }, 2000);
@@ -280,8 +264,7 @@
                     badge.innerText = "On Break";
                     createToast("You are now on a temporary break.");
                 } else {
-                    badge.className = "text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800";
-                    badge.innerText = "offline";
+                    setDutyStatusOnline();
                     createToast("Admin shift ended.");
                 }
                 fetchStaffData();
@@ -309,12 +292,15 @@
                         let timeStr = formatElapsed(member.updatedAt);
 
                         if (member.status === "on_duty") { 
-                            statusText = `Started Shift (${member.serverCode || 'Unknown Server'}) ${timeStr}`; 
+                            statusText = `Started Shift (${member.serverCode || 'Unknown Server'}) ${timeStr}`;
                             statusClass = "text-emerald-400 font-medium";
                         } else if (member.status === "break") { 
                             statusText = `On Break ${timeStr}`;
                             statusClass = "text-amber-400"; 
-                        } else if (member.status === "stop" || member.status === "off_duty") {
+                        } else if (member.status === "online") {
+                            statusText = `Online ${timeStr}`;
+                            statusClass = "text-blue-400";
+                        } else if (member.status === "stop" || member.status === "offline" || member.status === "off_duty") {
                             statusText = `Ended Shift ${timeStr}`;
                             statusClass = "text-slate-400";
                         }
@@ -374,6 +360,7 @@
             document.getElementById('totalPlayersCount').innerText = "0";
             document.getElementById('noPlayersMessage').classList.remove('hidden');
             document.getElementById('noPlayersMessage').innerText = "Please enter the target server code and connect to start monitoring.";
+            document.getElementById('teamsContainer').innerHTML = '<p class="text-slate-600 text-center py-4">Waiting for server connection...</p>';
             if (adminDutyStatus === "on_duty") {
                 updateDuty('stop');
             }
@@ -414,14 +401,28 @@
             }
             const serverCode = document.getElementById('serverCodeInput').value.trim();
             const timeString = document.getElementById('scheduleTimeInput').value;
+            
             if (!serverCode || !timeString) {
                 createToast("Please enter a server code and select a valid time.");
                 return;
             }
+
+            const [hours, minutes] = timeString.split(':');
+            const targetTime = new Date();
+            targetTime.setHours(parseInt(hours, 10));
+            targetTime.setMinutes(parseInt(minutes, 10));
+            targetTime.setSeconds(0);
+            targetTime.setMilliseconds(0);
+
+            if (targetTime.getTime() <= Date.now()) {
+                createToast("Selected time has already passed today.");
+                return;
+            }
+
             fetch(`${BASE_URL}/api/servers/${serverCode}/schedule-shutdown`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ timeString: timeString, senderId: currentAdmin.userId })
+                body: JSON.stringify({ targetTimestamp: targetTime.getTime(), senderId: currentAdmin.userId })
             }).then(res => res.json())
             .then(data => {
                 if (data.error) {
@@ -479,9 +480,7 @@
             document.getElementById('modalToBtn').onclick = () => { sendAction(pName, 'to'); closePlayerModal(); };
             document.getElementById('modalBanConfirmBtn').onclick = () => sendBan(pName);
 
-            const imgEl = document.getElementById('modalAvatar');
-            imgEl.src = PLACEHOLDER_AVATAR;
-            loadAndApplyAvatar(userId, imgEl);
+            document.getElementById('modalAvatar').src = `${BASE_URL}/api/avatar/${userId}`;
 
             toggleModalBanForm(false);
             document.getElementById('playerModal').classList.remove('hidden');
@@ -548,14 +547,12 @@
             const serverCode = document.getElementById('serverCodeInput').value.trim();
             if (!serverCode) return;
 
-            // 1. التحقق من تسجيل الدخول أولاً لمنع التعليق والطلب الخاطئ
             if (!currentAdmin) {
-                createToast("🚫 Please login with Roblox first!");
+                createToast("Please login with Roblox first!");
                 stopMonitoring();
                 return;
             }
 
-            // 2. إرسال الطلب مع الـ userId الحقيقي الخاص بالأدمن
             fetch(`${BASE_URL}/api/servers/${serverCode}/players?userId=${currentAdmin.userId}`)
                 .then(res => {
                     if (!res.ok) {
@@ -563,10 +560,10 @@
                             createToast("Target server has been shut down or expired.");
                             stopMonitoring();
                         } else if (res.status === 403) {
-                            createToast("🚫 Access Denied! Your account is not whitelisted or session expired.");
+                            createToast("Access Denied! Your account is not whitelisted or session expired.");
                             stopMonitoring();
                         } else {
-                            createToast("⚠️ An error occurred while fetching server data.");
+                            createToast("An error occurred while fetching server data.");
                             stopMonitoring();
                         }
                         throw new Error("Fetch failed");
@@ -617,16 +614,12 @@
                         if (existingGroup) {
                             document.getElementById(`team-${pName}`).innerText = player.team;
                             existingGroup.onclick = () => openPlayerModal(pName, player.team, pTime, pVehicle, pFrozen, pUserId);
-                            const img = existingGroup.querySelector(`#avatar-${pName}`);
-                            if (img && img.src.startsWith('data:') && avatarCache.has(String(pUserId))) {
-                                img.src = avatarCache.get(String(pUserId));
-                            }
                         } else {
                             const html = `
                                 <tbody id="player-group-${pName}" data-name="${pName}" class="player-group">
                                     <tr onclick="openPlayerModal('${pName}', '${player.team}', ${pTime}, ${pVehicle}, ${pFrozen}, ${pUserId})" class="border-b border-slate-900/60 cursor-pointer hover:bg-slate-900/30 transition-colors">
                                         <td class="py-3 pl-4 flex items-center gap-3">
-                                            <img id="avatar-${pName}" src="${PLACEHOLDER_AVATAR}" class="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800 shadow-sm flex-shrink-0" alt="Avatar">
+                                            <img id="avatar-${pName}" src="${BASE_URL}/api/avatar/${pUserId}" class="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800 shadow-sm flex-shrink-0" alt="Avatar">
                                             <span class="text-sm text-slate-300">${pName}</span>
                                         </td>
                                         <td class="py-3">
@@ -635,34 +628,9 @@
                                     </tr>
                                 </tbody>`;
                             tableMain.insertAdjacentHTML('beforeend', html);
-
-                            const imgEl = document.getElementById(`avatar-${pName}`);
-                            loadAndApplyAvatar(pUserId, imgEl);
                         }
                     });
-                }).catch((err) => {
-                    console.error("Console Error Log:", err);
-                });
-        }
-
-        async function resolveAvatar(userId) {
-            const key = String(userId);
-            if (avatarCache.has(key)) return avatarCache.get(key);
-            try {
-                const res = await fetch(`${ROBLOX_THUMBNAILS_API}?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
-                if (!res.ok) throw new Error();
-                const json = await res.json();
-                const url = json?.data?.[0]?.state === "Completed" ? json.data[0].imageUrl : PLACEHOLDER_AVATAR;
-                avatarCache.set(key, url);
-                return url;
-            } catch {
-                return PLACEHOLDER_AVATAR;
-            }
-        }
-
-        async function loadAndApplyAvatar(userId, imgElement) {
-            const url = await resolveAvatar(userId);
-            if (url && imgElement && imgElement.isConnected) imgElement.src = url;
+                }).catch(() => {});
         }
 
         function sendAction(playerName, actionType) {

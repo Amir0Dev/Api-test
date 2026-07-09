@@ -17,11 +17,6 @@ const CLIENT_ID = process.env.ClientId;
 const CLIENT_SECRET = process.env.ClientSecret;
 const REDIRECT_URI = process.env.RedirectURI;
 
-console.log("API_TOKEN:", API_TOKEN);
-console.log("CLIENT_ID:", CLIENT_ID);
-console.log("CLIENT_SECRET:", CLIENT_SECRET);
-console.log("REDIRECT_URI:", REDIRECT_URI);
-
 const ALLOWED_ADMINS = [
     2748615471,
     1,
@@ -45,19 +40,18 @@ function smartRateLimiter(req, res, next) {
     rateLimits[ip] = rateLimits[ip].filter(timestamp => now - timestamp < 10000);
     
     if (rateLimits[ip].length > 45) {
-        return res.status(429).json({ error: "تم تجاوز حد الطلبات المسموح، يرجى الانتظار قليلا" });
+        return res.status(429).json({ error: "Rate limit exceeded" });
     }
     
     rateLimits[ip].push(now);
     next();
 }
 
-// 🛠️ تم الإصلاح هنا: استخدام الـ Optional Chaining لضمان عدم الانهيار في طلبات الـ GET
 function verifyAdminAccess(req, res, next) {
     const adminId = parseInt(req.body?.senderId || req.body?.userId || req.query?.senderId || req.query?.userId);
     
     if (!adminId || isNaN(adminId) || !ALLOWED_ADMINS.includes(adminId)) {
-        return res.status(403).json({ error: "وصول غير مصرح به، ليس لديك صلاحية للقيام بهذا الإجراء" });
+        return res.status(403).json({ error: "Unauthorized access" });
     }
     
     next();
@@ -79,7 +73,7 @@ app.get('/oauth/login', (req, res) => {
 app.get('/oauth/callback', async (req, res) => {
     const { code, state } = req.query;
     if (!code || !state || !oauthStates[state]) {
-        return res.status(400).send("طلب غير صالح أو انتهت صلاحية الجلسة");
+        return res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
     }
 
     try {
@@ -96,7 +90,7 @@ app.get('/oauth/callback', async (req, res) => {
         });
 
         const tokenData = await tokenResponse.json();
-        if (!tokenData.access_token) throw new Error("Failed to get access token");
+        if (!tokenData.access_token) throw new Error("Token failed");
 
         const userResponse = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
             headers: { "Authorization": `Bearer ${tokenData.access_token}` }
@@ -108,12 +102,7 @@ app.get('/oauth/callback', async (req, res) => {
 
         if (!ALLOWED_ADMINS.includes(robloxUserId)) {
             oauthStates[state] = { status: "unauthorized", adminData: null };
-            return res.send(`
-                <body style="background:#020617;color:#f1f5f9;font-family:sans-serif;text-align:center;padding-top:100px;direction:rtl;">
-                    <h2 style="color:#ef4444;">غير مصرح لك</h2>
-                    <p>الحساب (${robloxUsername}) غير مدرج في قائمة الإدارة المركزية</p>
-                </body>
-            `);
+            return res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
         }
 
         oauthStates[state] = {
@@ -121,18 +110,11 @@ app.get('/oauth/callback', async (req, res) => {
             adminData: { userId: robloxUserId, username: robloxUsername }
         };
 
-        res.send(`
-            <body style="background:#020617;color:#f1f5f9;font-family:sans-serif;text-align:center;padding-top:100px;direction:rtl;">
-                <h2 style="color:#10b981;">تم تسجيل الدخول بنجاح</h2>
-                <p>مرحباً بك، يمكنك إغلاق هذه النافذة والعودة للتطبيق الآن</p>
-                <script>setTimeout(() => window.close(), 3000);</script>
-            </body>
-        `);
+        res.send(`authorized<script>setTimeout(() => window.close(), 1000);</script>`);
 
     } catch (error) {
-        console.error("OAuth Error:", error);
         oauthStates[state] = { status: "failed", adminData: null };
-        res.status(500).send("حدث خطأ أثناء معالجة تسجيل الدخول");
+        res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
     }
 });
 
@@ -144,7 +126,7 @@ app.get('/api/auth/status', (req, res) => {
     if (session.status === "success") {
         const { userId, username } = session.adminData;
         if (!activeAdmins[userId]) {
-            activeAdmins[userId] = { userId, username, status: "offline", serverCode: null, updatedAt: new Date().toISOString() };
+            activeAdmins[userId] = { userId, username, status: "online", serverCode: null, updatedAt: new Date().toISOString() };
         }
     }
     res.json(session);
@@ -154,13 +136,13 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     const { userId, action, serverCode } = req.body;
     const admin = activeAdmins[userId];
 
-    if (!admin) return res.status(404).json({ error: "الأدمن غير مسجل دخوله" });
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
 
     if (action === "start") {
-        if (!serverCode) return res.status(400).json({ error: "يجب تحديد كود السيرفر أولاً" });
+        if (!serverCode) return res.status(400).json({ error: "Server code required" });
         
         const server = liveServers[serverCode];
-        if (!server) return res.status(404).json({ error: "السيرفر المطلوب غير نشط حالياً" });
+        if (!server) return res.status(404).json({ error: "Server offline" });
 
         admin.status = "on_duty";
         admin.serverCode = serverCode;
@@ -170,7 +152,7 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
 
     if (action === "break") {
         if (admin.status !== "on_duty") {
-            return res.status(400).json({ error: "لا يمكنك أخذ استراحة دون بدء النوبة أولاً" });
+            return res.status(400).json({ error: "Must be on duty" });
         }
         admin.status = "break";
         admin.updatedAt = new Date().toISOString();
@@ -178,17 +160,22 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     }
 
     if (action === "stop") {
-        admin.status = "stop";
+        admin.status = "online";
         admin.serverCode = null;
         admin.updatedAt = new Date().toISOString();
-        return res.json({ success: true, status: "off_duty" });
+        return res.json({ success: true, status: "online" });
     }
 
-    res.status(400).json({ error: "إجراء غير معروف" });
+    res.status(400).json({ error: "Unknown action" });
 });
 
 app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
-    res.json({ staff: Object.values(activeAdmins) });
+    let staffArr = Object.values(activeAdmins);
+    staffArr.sort((a, b) => {
+        const order = { "on_duty": 1, "break": 2, "online": 3, "stop": 3, "offline": 3 };
+        return (order[a.status] || 4) - (order[b.status] || 4);
+    });
+    res.json({ staff: staffArr });
 });
 
 app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
@@ -197,7 +184,7 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
     const authHeader = req.headers['authorization'];
 
     if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
-        return res.status(401).json({ error: "غير مصرح" });
+        return res.status(401).json({ error: "Unauthorized" });
     }
 
     let teamsCounter = {};
@@ -226,11 +213,11 @@ app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
     const { action, target, reason, duration, senderId } = req.body;
 
     const admin = activeAdmins[senderId];
-    if (!admin) return res.status(403).json({ error: "الأدمن غير مسجل في النظام" });
+    if (!admin) return res.status(403).json({ error: "Admin not found" });
 
     if (action === "shutdown") {
         if (admin.status !== "on_duty" || admin.serverCode !== serverCode) {
-            return res.status(403).json({ error: "لا يمكن تنفيذ أمر الإغلاق إلا إذا كنت في النوبة داخل هذا السيرفر" });
+            return res.status(403).json({ error: "Duty required for this action" });
         }
     }
 
@@ -242,25 +229,27 @@ app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
 
 app.post('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
-    const { timeString, senderId } = req.body;
+    const { targetTimestamp, senderId } = req.body;
 
     const admin = activeAdmins[senderId];
     if (!admin || admin.status !== "on_duty" || admin.serverCode !== serverCode) {
-        return res.status(403).json({ error: "يجب أن تكون في النوبة لجدولة إغلاق هذا السيرفر" });
+        return res.status(403).json({ error: "يجب أن تكون في النوبة لجدولة الإغلاق" });
     }
 
-    const targetTime = new Date(timeString).getTime();
-    if (isNaN(targetTime) || targetTime <= Date.now()) {
+    if (!targetTimestamp || isNaN(targetTimestamp) || targetTimestamp <= Date.now()) {
         return res.status(400).json({ error: "الوقت المحدد غير صالح أو في الماضي" });
     }
 
+    const d = new Date(targetTimestamp);
+    const formattedTime = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     scheduledShutdowns[serverCode] = {
-        executeAt: targetTime,
-        formattedTime: timeString,
+        executeAt: targetTimestamp,
+        formattedTime: formattedTime,
         senderId: senderId
     };
 
-    res.json({ success: true, message: `تم جدولة الإغلاق بنجاح في الوقت المحدد: ${timeString}` });
+    res.json({ success: true, message: `تم جدولة الإغلاق بنجاح في: ${formattedTime}` });
 });
 
 app.delete('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, res) => {
@@ -277,7 +266,7 @@ app.delete('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req
 app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
     const serverData = liveServers[serverCode];
-    if (!serverData) return res.status(404).json({ error: "السيرفر مغلق أو غير موجود" });
+    if (!serverData) return res.status(404).json({ error: "Server not found" });
     
     const schedule = scheduledShutdowns[serverCode] || null;
     res.json({
@@ -289,12 +278,25 @@ app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
 app.get('/api/servers/:serverCode/players/:playerId', verifyAdminAccess, (req, res) => {
     const { serverCode, playerId } = req.params;
     const serverData = liveServers[serverCode];
-    if (!serverData) return res.status(404).json({ error: "السيرفر غير موجود" });
+    if (!serverData) return res.status(404).json({ error: "Server not found" });
 
     const player = serverData.players.find(p => String(p.userId) === String(playerId) || p.name === playerId);
-    if (!player) return res.status(404).json({ error: "اللاعب غير موجود حالياً في السيرفر" });
+    if (!player) return res.status(404).json({ error: "Player not found" });
 
     res.json(player);
+});
+
+app.get('/api/avatar/:userId', async (req, res) => {
+    try {
+        const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${req.params.userId}&size=150x150&format=Png&isCircular=false`);
+        const data = await response.json();
+        if (data && data.data && data.data.length > 0 && data.data[0].state === "Completed") {
+            return res.redirect(data.data[0].imageUrl);
+        }
+        res.redirect("https://tr.rbxcdn.com/3b43a29ce73ed72b47b2c554a938c5d6/150/150/AvatarHeadshot/Png");
+    } catch (error) {
+        res.redirect("https://tr.rbxcdn.com/3b43a29ce73ed72b47b2c554a938c5d6/150/150/AvatarHeadshot/Png");
+    }
 });
 
 app.delete('/api/servers/:serverCode', (req, res) => {
@@ -305,7 +307,7 @@ app.delete('/api/servers/:serverCode', (req, res) => {
     
     Object.values(activeAdmins).forEach(admin => {
         if(admin.serverCode === serverCode) {
-            admin.status = "stop";
+            admin.status = "online";
             admin.serverCode = null;
             admin.updatedAt = new Date().toISOString();
         }
@@ -324,7 +326,7 @@ setInterval(() => {
 
             Object.values(activeAdmins).forEach(admin => {
                 if (admin.serverCode === serverCode) {
-                    admin.status = "stop";
+                    admin.status = "online";
                     admin.serverCode = null;
                     admin.updatedAt = new Date().toISOString();
                 }
@@ -335,7 +337,7 @@ setInterval(() => {
                 commandsQueue[serverCode].push({
                     action: "shutdown",
                     target: "all",
-                    reason: "إغلاق مجدول مسبقاً",
+                    reason: "Scheduled",
                     duration: 0,
                     senderId: scheduledShutdowns[serverCode].senderId
                 });
@@ -346,8 +348,7 @@ setInterval(() => {
 }, 3000);
 
 app.use((err, req, res, next) => {
-    console.error("Global Catch Error:", err.stack);
-    res.status(500).json({ error: "حدث خطأ داخلي غير متوقع في الخادم" });
+    res.status(500).json({ error: "Internal Error" });
 });
 
 const PORT = process.env.PORT || 3000;
