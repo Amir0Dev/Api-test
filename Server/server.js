@@ -63,7 +63,7 @@ app.get('/oauth/login', (req, res) => {
     const { state } = req.query;
     if (!state) return res.status(400).send("Missing state");
 
-    oauthStates[state] = { status: "pending", adminData: null };
+    oauthStates[state] = { status: "pending", adminData: null, time: Date.now() };
 
     const robloxAuthUrl = `https://apis.roblox.com/oauth/v1/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20profile&response_type=code&state=${state}`;
     res.redirect(robloxAuthUrl);
@@ -72,7 +72,7 @@ app.get('/oauth/login', (req, res) => {
 app.get('/oauth/callback', async (req, res) => {
     const { code, state } = req.query;
     if (!code || !state || !oauthStates[state]) {
-        return res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
+        return res.send(`<script>setTimeout(() => window.close(), 100);</script>`);
     }
 
     try {
@@ -99,21 +99,16 @@ app.get('/oauth/callback', async (req, res) => {
         const robloxUserId = parseInt(userData.sub);
         const robloxUsername = userData.preferred_username || userData.name;
 
-        if (!ALLOWED_ADMINS.includes(robloxUserId)) {
-            oauthStates[state] = { status: "unauthorized", adminData: null };
-            return res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
-        }
-
         oauthStates[state] = {
             status: "success",
             adminData: { userId: robloxUserId, username: robloxUsername }
         };
 
-        res.send(`authorized<script>setTimeout(() => window.close(), 1000);</script>`);
+        res.send(`<script>setTimeout(() => window.close(), 100);</script>`);
 
     } catch (error) {
         oauthStates[state] = { status: "failed", adminData: null };
-        res.send(`unauthorized<script>setTimeout(() => window.close(), 1000);</script>`);
+        res.send(`<script>setTimeout(() => window.close(), 100);</script>`);
     }
 });
 
@@ -125,7 +120,7 @@ app.get('/api/auth/status', (req, res) => {
     if (session.status === "success") {
         const { userId, username } = session.adminData;
         if (!activeAdmins[userId]) {
-            activeAdmins[userId] = { userId, username, status: "online", serverCode: null, updatedAt: new Date().toISOString(), lastSeen: Date.now() };
+            activeAdmins[userId] = { userId, username, status: "Online", serverCode: null, updatedAt: new Date().toISOString(), lastSeen: Date.now() };
         }
     }
     res.json(session);
@@ -169,36 +164,36 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     }
 
     if (action === "stop") {
-        admin.status = "online";
+        admin.status = "Online";
         admin.serverCode = null;
         admin.updatedAt = new Date().toISOString();
-        return res.json({ success: true, status: "online" });
+        return res.json({ success: true, status: "Online" });
     }
 
     res.status(400).json({ error: "Unknown action" });
 });
 
-app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
+app.get('/api/admin/staff', (req, res) => {
     const currentUserId = parseInt(req.query.userId);
     const now = Date.now();
 
     if (currentUserId && activeAdmins[currentUserId]) {
         activeAdmins[currentUserId].lastSeen = now;
-        if (activeAdmins[currentUserId].status === "offline") {
-            activeAdmins[currentUserId].status = "online";
+        if (activeAdmins[currentUserId].status === "Offline") {
+            activeAdmins[currentUserId].status = "Online";
         }
     }
 
     Object.keys(activeAdmins).forEach(userId => {
         const admin = activeAdmins[userId];
-        if (!admin.lastSeen || now - admin.lastSeen > 7000) {
+        if (!admin.lastSeen || now - admin.lastSeen > 25000) {
             delete activeAdmins[userId];
         }
     });
 
     let staffArr = Object.values(activeAdmins);
     staffArr.sort((a, b) => {
-        const order = { "on_duty": 1, "break": 2, "online": 3 };
+        const order = { "on_duty": 1, "break": 2, "Online": 3 };
         return (order[a.status] || 4) - (order[b.status] || 4);
     });
     res.json({ staff: staffArr });
@@ -272,7 +267,7 @@ app.post('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, 
     }
 
     const d = new Date(targetTimestamp);
-    const formattedTime = d.toLocaleString([], { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const formattedTime = d.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     scheduledShutdowns[serverCode] = {
         executeAt: targetTimestamp,
@@ -294,7 +289,7 @@ app.delete('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req
     res.json({ success: true, message: "Scheduled shutdown cancelled" });
 });
 
-app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
+app.get('/api/servers/:serverCode/players', (req, res) => {
     const { serverCode } = req.params;
     const serverData = liveServers[serverCode];
     if (!serverData) return res.status(404).json({ error: "Server not found" });
@@ -306,7 +301,7 @@ app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
     });
 });
 
-app.get('/api/servers/:serverCode/players/:playerId', verifyAdminAccess, (req, res) => {
+app.get('/api/servers/:serverCode/players/:playerId', (req, res) => {
     const { serverCode, playerId } = req.params;
     const serverData = liveServers[serverCode];
     if (!serverData) return res.status(404).json({ error: "Server not found" });
@@ -332,6 +327,10 @@ app.get('/api/avatar/:userId', async (req, res) => {
 
 setInterval(() => {
     const now = Date.now();
+    Object.keys(oauthStates).forEach(k => {
+        if(now - oauthStates[k].time > 600000) delete oauthStates[k];
+    });
+
     Object.keys(liveServers).forEach(serverCode => {
         if (now - liveServers[serverCode].lastUpdated > 7000) {
             delete liveServers[serverCode];
@@ -340,7 +339,7 @@ setInterval(() => {
 
             Object.values(activeAdmins).forEach(admin => {
                 if (admin.serverCode === serverCode) {
-                    admin.status = "online";
+                    admin.status = "Online";
                     admin.serverCode = null;
                     admin.updatedAt = new Date().toISOString();
                 }

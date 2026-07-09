@@ -33,11 +33,9 @@
     </div>
 
     <div id="serverModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
-        <div class="panel p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl border border-slate-800 relative">
+        <div class="panel p-6 rounded-xl max-w-sm w-full space-y-4 shadow-2xl border border-slate-700 relative bg-[#0f172a]">
             <button onclick="closeServerModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-400 text-lg">✕</button>
-            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2 mb-2">
-                Moderate Server
-            </h3>
+            <h3 class="text-lg font-bold text-slate-100 mb-2">Moderate Server</h3>
             
             <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
                 <div class="flex justify-between"><span>Server Uptime:</span><span id="modalServerUptime" class="text-slate-400 font-mono">00h 00m 00s</span></div>
@@ -54,21 +52,30 @@
             
             <div class="border-t border-slate-800 my-4 pt-4 space-y-3">
                 <label class="text-xs text-slate-300 font-semibold block">Schedule Shutdown Time</label>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="space-y-3">
                     <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">Days</label>
-                        <select id="schedDay" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-slate-700"></select>
+                        <label class="text-[10px] text-slate-500 block mb-1">Select Date (Max 14 days)</label>
+                        <input type="date" id="schedDate" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
-                    <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">Hours</label>
-                        <select id="schedHour" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-slate-700"></select>
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">Minutes</label>
-                        <select id="schedMinute" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-slate-700"></select>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-500 block mb-1">Hour</label>
+                            <select id="schedHour" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 block mb-1">Minute</label>
+                            <select id="schedMinute" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 block mb-1">AM / PM</label>
+                            <select id="schedAmpm" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <button onclick="scheduleShutdown()" class="w-full bg-amber-950/30 hover:bg-amber-900/40 text-amber-400 border border-amber-900/50 text-xs py-2.5 rounded-lg transition-colors mt-2">Confirm Schedule</button>
+                <button onclick="scheduleShutdown()" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 border border-blue-800/50 text-xs py-2.5 rounded-lg transition-colors mt-2">Confirm Schedule</button>
             </div>
         </div>
     </div>
@@ -113,9 +120,6 @@
                 <img id="adminHeaderAvatar" src="" class="w-8 h-8 rounded-full border border-slate-700 object-cover">
                 <span id="adminHeaderName" class="text-sm font-semibold text-slate-200"></span>
             </div>
-            <div>
-                <span id="adminBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700 font-normal hidden">Loading...</span>
-            </div>
         </div>
         
         <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
@@ -129,7 +133,7 @@
         <div class="space-y-6 flex flex-col justify-start">
             <div class="panel rounded-xl p-5 shadow-lg space-y-4">
                 <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Personal Duty Control</span>
+                    <span>Duty Control</span>
                     <span id="dutyStatusBadge" class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">Offline</span>
                 </h2>
                 
@@ -153,10 +157,10 @@
             </div>
         </div>
 
-        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg h-full">
+        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg h-full min-h-[400px]">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
-                <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Live Monitoring</span>
+                <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Connecting</span>
             </div>
             
             <div class="overflow-x-auto flex-1 h-full">
@@ -175,6 +179,7 @@
 
     <script>
         const BASE_URL = window.location.origin;
+        const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%231e293b'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%2347556a'/%3E%3Cellipse cx='16' cy='26' rx='9' ry='6' fill='%2347556a'/%3E%3C/svg%3E";
         let autoFetchInterval = null;
         let staffInterval = null;
         let uptimeInterval = null;
@@ -195,7 +200,7 @@
 
         function playToastSound() {
             const now = Date.now();
-            if (now - lastSoundTime < 1000) return;
+            if (now - lastSoundTime < 500) return;
             lastSoundTime = now;
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -203,22 +208,23 @@
                 const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(500, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.1);
             } catch(e) {}
         }
 
-        function createToast(message) {
+        function createToast(message, isImportant = false) {
             const container = document.getElementById('notificationContainer');
             for (let child of container.children) {
                 if (child.innerText.includes(message)) return;
             }
-            playToastSound();
+            if (isImportant) playToastSound();
+            
             const toast = document.createElement('div');
             toast.className = `toast-notif p-4 rounded-lg text-xs shadow-lg border pointer-events-auto flex items-center justify-between bg-slate-900 border-slate-800 text-slate-300`;
             toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-slate-400">✕</button>`;
@@ -244,7 +250,6 @@
 
         function startRobloxOAuth() {
             const state = generateRandomState();
-            document.getElementById('authStatusText').classList.remove('hidden');
             
             window.open(`${BASE_URL}/oauth/login?state=${state}`, '_blank');
             const checkInterval = setInterval(() => {
@@ -255,7 +260,6 @@
                             clearInterval(checkInterval);
                             currentAdmin = data.adminData;
                             document.getElementById('loginScreen').classList.add('hidden');
-                            document.getElementById('adminBadge').innerText = `${currentAdmin.username}`;
                             
                             const profileHeader = document.getElementById('adminProfileHeader');
                             if (profileHeader) {
@@ -264,15 +268,10 @@
                                 profileHeader.classList.remove('hidden');
                                 profileHeader.classList.add('flex');
                             }
-                            createToast(`Welcome ${currentAdmin.username}, authenticated successfully.`);
                             setDutyStatusOnline();
                             startStaffMonitoring();
-                        } else if (data.status === "unauthorized") {
+                        } else if (data.status === "unauthorized" || data.status === "failed") {
                             clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "Auth status: Unauthorized";
-                        } else if (data.status === "failed") {
-                            clearInterval(checkInterval);
-                            document.getElementById('authStatusText').innerText = "Auth status: Failed";
                         }
                     });
             }, 2000);
@@ -283,12 +282,12 @@
             const codeToUse = activeServerCode || document.getElementById('serverCodeInput').value.trim();
 
             if (actionType === "start" && !codeToUse) {
-                createToast("You must connect to a server first!");
+                createToast("You must connect to a server first!", true);
                 return;
             }
 
             if (actionType === "break" && adminDutyStatus !== "on_duty") {
-                createToast("You cannot take a break without starting your shift first!");
+                createToast("You cannot take a break without starting your shift first!", true);
                 return;
             }
 
@@ -300,7 +299,7 @@
             .then(async res => {
                 const data = await res.json();
                 if (!res.ok) {
-                    createToast(data.error || "Failed to update duty status.");
+                    createToast(data.error || "Failed to update duty status.", true);
                     return;
                 }
                 
@@ -310,14 +309,14 @@
                 if (data.status === "on_duty") {
                     badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
                     badge.innerText = "On Duty";
-                    createToast("Your live admin shift has started successfully.");
+                    createToast("Your live admin shift has started successfully.", true);
                 } else if (data.status === "break") {
                     badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
                     badge.innerText = "On Break";
-                    createToast("You are now on a temporary break.");
+                    createToast("You are now on a temporary break.", true);
                 } else {
                     setDutyStatusOnline();
-                    createToast("Admin shift ended.");
+                    createToast("Admin shift ended.", false);
                 }
                 fetchStaffData();
             });
@@ -343,12 +342,12 @@
                         let statusClass = "text-blue-400";
 
                         if (member.status === "on_duty") { 
-                            statusText = `Shift (${member.serverCode || 'Unknown'})`;
+                            statusText = `On Duty`;
                             statusClass = "text-emerald-400 font-medium";
                         } else if (member.status === "break") { 
                             statusText = `On Break`;
                             statusClass = "text-amber-400"; 
-                        } else if (member.status === "online") {
+                        } else if (member.status === "Online") {
                             statusText = `Online`;
                             statusClass = "text-blue-400";
                         }
@@ -372,7 +371,7 @@
 
             if (!activeServerCode) {
                 if (!inputVal) {
-                    createToast("Please enter server code first.");
+                    createToast("Please enter server code first.", true);
                     return;
                 }
                 activeServerCode = inputVal;
@@ -387,10 +386,10 @@
                 connectBtn.innerText = "Disconnect";
                 connectBtn.className = "bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
                 modBtn.classList.remove('hidden');
-                createToast("Connecting");
+                createToast("Connecting", false);
             } else {
                 stopMonitoring();
-                createToast("Live monitoring stopped.");
+                createToast("Live monitoring stopped.", false);
             }
         }
 
@@ -419,18 +418,12 @@
         }
 
         function fetchData() {
-            if (!activeServerCode) return;
-
-            if (!currentAdmin) {
-                createToast("Please login with Roblox first!");
-                stopMonitoring();
-                return;
-            }
+            if (!activeServerCode || !currentAdmin) return;
 
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/players?userId=${currentAdmin.userId}`)
                 .then(res => {
                     if (!res.ok) {
-                        createToast("server has been shutdown or unavaiable");
+                        createToast("server has been shutdown or unavaiable", true);
                         stopMonitoring();
                         throw new Error("Fetch failed");
                     }
@@ -510,35 +503,32 @@
 
         function populateScheduleDropdowns() {
             const now = new Date();
-            const daysSelect = document.getElementById('schedDay');
+            const dateInput = document.getElementById('schedDate');
+            const maxDate = new Date();
+            maxDate.setDate(now.getDate() + 14);
+
+            dateInput.min = now.toISOString().split('T')[0];
+            dateInput.max = maxDate.toISOString().split('T')[0];
+            dateInput.value = dateInput.min;
+
             const hoursSelect = document.getElementById('schedHour');
-            const minsSelect = document.getElementById('schedMinute');
-            
-            daysSelect.innerHTML = '';
-            for(let i = 0; i < 7; i++) {
-                let d = new Date();
-                d.setDate(d.getDate() + i);
-                let opt = document.createElement('option');
-                opt.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                opt.text = i === 0 ? "Today" : d.toLocaleDateString();
-                daysSelect.appendChild(opt);
-            }
-
             hoursSelect.innerHTML = '';
-            for(let i = 0; i < 24; i++) {
-                let opt = document.createElement('option');
-                opt.value = i;
-                opt.text = String(i).padStart(2, '0');
-                hoursSelect.appendChild(opt);
+            for(let i = 1; i <= 12; i++) {
+                hoursSelect.innerHTML += `<option value="${i}">${i}</option>`;
             }
-            hoursSelect.value = now.getHours();
+            
+            let currentHour = now.getHours();
+            let ampm = currentHour >= 12 ? 'PM' : 'AM';
+            currentHour = currentHour % 12;
+            currentHour = currentHour ? currentHour : 12;
+            
+            hoursSelect.value = currentHour;
+            document.getElementById('schedAmpm').value = ampm;
 
+            const minsSelect = document.getElementById('schedMinute');
             minsSelect.innerHTML = '';
-            for(let i = 0; i < 60; i++) {
-                let opt = document.createElement('option');
-                opt.value = i;
-                opt.text = String(i).padStart(2, '0');
-                minsSelect.appendChild(opt);
+            for(let i = 0; i <= 59; i++) {
+                minsSelect.innerHTML += `<option value="${i}">${String(i).padStart(2, '0')}</option>`;
             }
             minsSelect.value = now.getMinutes();
         }
@@ -569,7 +559,7 @@
 
         function shutdownServer() {
             if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("Action Denied! You must be On Duty.");
+                createToast("Action Denied! You must be On Duty.", true);
                 return;
             }
             if (!activeServerCode) return;
@@ -582,10 +572,10 @@
                 body: JSON.stringify({ action: 'shutdown', target: 'all', senderId: currentAdmin.userId })
             }).then(async res => {
                 if(!res.ok) {
-                    createToast("Failed to send shutdown command.");
+                    createToast("Failed to send shutdown command.", true);
                     return;
                 }
-                createToast("Server shutdown command sent.");
+                createToast("Server shutdown command sent.", true);
                 closeServerModal();
                 stopMonitoring();
             });
@@ -593,16 +583,31 @@
 
         function scheduleShutdown() {
             if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("Action Denied! You must be On Duty.");
+                createToast("Action Denied! You must be On Duty.", true);
                 return;
             }
             if (!activeServerCode) return;
 
-            const dVal = document.getElementById('schedDay').value;
-            const hVal = document.getElementById('schedHour').value;
-            const mVal = document.getElementById('schedMinute').value;
+            const dVal = document.getElementById('schedDate').value;
+            let hVal = parseInt(document.getElementById('schedHour').value);
+            const mVal = parseInt(document.getElementById('schedMinute').value);
+            const ampm = document.getElementById('schedAmpm').value;
+
+            if(!dVal) {
+                createToast("Please select a valid date.", true);
+                return;
+            }
+
+            if (ampm === 'PM' && hVal < 12) hVal += 12;
+            if (ampm === 'AM' && hVal === 12) hVal = 0;
+
             const targetDate = new Date(`${dVal}T${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}:00`);
             const targetTimestamp = targetDate.getTime();
+
+            if (targetTimestamp <= Date.now()) {
+                createToast("Please select a future time.", true);
+                return;
+            }
 
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown`, {
                 method: 'POST',
@@ -611,9 +616,10 @@
             }).then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    createToast(data.error);
+                    createToast(data.error, true);
                 } else {
-                    createToast(data.message);
+                    createToast(data.message, true);
+                    document.getElementById('cancelScheduleBtn').classList.remove('hidden');
                 }
             });
         }
@@ -625,16 +631,18 @@
             }).then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    createToast(data.error);
+                    createToast(data.error, true);
                 } else {
-                    createToast(data.message);
+                    createToast(data.message, true);
+                    document.getElementById('cancelScheduleBtn').classList.add('hidden');
+                    document.getElementById('modalServerSchedule').innerText = 'None';
                 }
             });
         }
 
         function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
             if (adminDutyStatus !== "on_duty") {
-                createToast("Action Denied! You must be On Duty.");
+                createToast("Action Denied! You must be On Duty.", true);
                 return;
             }
             currentModalUserId = userId;
@@ -731,10 +739,10 @@
             }).then(async res => {
                 if(!res.ok) {
                     const err = await res.json();
-                    createToast(`Error: ${err.error}`);
+                    createToast(`Error: ${err.error}`, true);
                     return;
                 }
-                createToast(`Command executed successfully.`);
+                createToast(`Command executed successfully.`, true);
             });
         }
 
@@ -748,10 +756,10 @@
                 body: JSON.stringify({ action: 'ban', target: playerName, reason: reasonText, duration: durationText, senderId: currentAdmin.userId })
             }).then(async res => {
                 if(!res.ok) {
-                    createToast("Failed to execute Ban.");
+                    createToast("Failed to execute Ban.", true);
                     return;
                 }
-                createToast(`Ban executed successfully.`);
+                createToast(`Ban executed successfully.`, true);
             });
         }
     </script>
