@@ -7,7 +7,8 @@ require("dotenv").config({
 });
 
 const app = express();
-app.use(express.json());
+// تم زيادة الحد الأقصى للـ JSON لاستيعاب بيانات الخريطة القادمة من روبلوكس
+app.use(express.json({ limit: '50mb' }));
 const frontendPath = path.join(__dirname, '..', 'Frontend');
 app.use(express.static(frontendPath));
 
@@ -50,6 +51,7 @@ function verifyAdminAccess(req, res, next) {
     if (!adminId || isNaN(adminId) || !ALLOWED_ADMINS.includes(adminId)) {
         return res.status(403).json({ error: "Unauthorized access" });
     }
+    
     next();
 }
 
@@ -91,13 +93,16 @@ app.get('/oauth/callback', async (req, res) => {
         const userResponse = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
             headers: { "Authorization": `Bearer ${tokenData.access_token}` }
         });
+
         const userData = await userResponse.json();
         const robloxUserId = parseInt(userData.sub);
         const robloxUsername = userData.preferred_username || userData.name;
+
         oauthStates[state] = {
             status: "success",
             adminData: { userId: robloxUserId, username: robloxUsername }
         };
+
         res.send(`<script>setTimeout(() => window.close(), 100);</script>`);
 
     } catch (error) {
@@ -207,9 +212,34 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
     res.json({ staff: staffArr });
 });
 
+// Endpoint لاستقبال بيانات الماب من سيرفر روبلوكس
+app.post('/api/servers/:serverCode/map', (req, res) => {
+    const { serverCode } = req.params;
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!liveServers[serverCode]) {
+        liveServers[serverCode] = { startTime: Date.now() };
+    }
+    
+    liveServers[serverCode].mapData = req.body;
+    res.json({ success: true });
+});
+
+// Endpoint للواجهة الأمامية لجلب بيانات الماب
+app.get('/api/servers/:serverCode/map', verifyAdminAccess, (req, res) => {
+    const { serverCode } = req.params;
+    const server = liveServers[serverCode];
+    if (!server || !server.mapData) return res.status(404).json({ error: "Map not ready" });
+    res.json(server.mapData);
+});
+
 app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
     const { serverCode } = req.params;
-    const { playersList, mapData } = req.body; 
+    const { playersList } = req.body; 
     const authHeader = req.headers['authorization'];
 
     if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
@@ -224,21 +254,16 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
     }
 
     if (!liveServers[serverCode]) {
-        liveServers[serverCode] = { startTime: Date.now(), mapData: [] };
-    }
-
-    let currentMapData = liveServers[serverCode].mapData || [];
-    if (mapData && Array.isArray(mapData)) {
-        currentMapData = mapData;
+        liveServers[serverCode] = { startTime: Date.now() };
     }
 
     liveServers[serverCode] = {
+        ...liveServers[serverCode],
         startTime: liveServers[serverCode].startTime,
         serverCode: serverCode,
         totalPlayers: Array.isArray(playersList) ? playersList.length : 0,
         teamsSummary: teamsCounter,
         players: playersList || [],
-        mapData: currentMapData,
         lastUpdated: Date.now()
     };
 
@@ -367,7 +392,7 @@ setInterval(() => {
                     reason: "Scheduled",
                     duration: 0,
                     senderId: scheduledShutdowns[serverCode].senderId
-                });
+                 });
                 delete scheduledShutdowns[serverCode];
             }
         }
