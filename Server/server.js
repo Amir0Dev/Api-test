@@ -126,10 +126,20 @@ app.get('/api/auth/status', (req, res) => {
     if (session.status === "success") {
         const { userId, username } = session.adminData;
         if (!activeAdmins[userId]) {
-            activeAdmins[userId] = { userId, username, status: "online", serverCode: null, updatedAt: new Date().toISOString() };
+            activeAdmins[userId] = { userId, username, status: "online", serverCode: null, updatedAt: new Date().toISOString(), lastSeen: Date.now() };
         }
     }
     res.json(session);
+});
+
+app.post('/api/admin/disconnect', (req, res) => {
+    const { userId } = req.body;
+    if (userId && activeAdmins[userId]) {
+        activeAdmins[userId].status = "offline";
+        activeAdmins[userId].serverCode = null;
+        activeAdmins[userId].updatedAt = new Date().toISOString();
+    }
+    res.json({ success: true });
 });
 
 app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
@@ -137,6 +147,8 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     const admin = activeAdmins[userId];
 
     if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    admin.lastSeen = Date.now();
 
     if (action === "start") {
         if (!serverCode) return res.status(400).json({ error: "Server code required" });
@@ -170,10 +182,28 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
 });
 
 app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
+    const currentUserId = parseInt(req.query.userId);
+    const now = Date.now();
+
+    if (currentUserId && activeAdmins[currentUserId]) {
+        activeAdmins[currentUserId].lastSeen = now;
+        if (activeAdmins[currentUserId].status === "offline") {
+            activeAdmins[currentUserId].status = "online";
+        }
+    }
+
+    Object.values(activeAdmins).forEach(admin => {
+        if (admin.status !== "offline" && (!admin.lastSeen || now - admin.lastSeen > 7000)) {
+            admin.status = "offline";
+            admin.serverCode = null;
+            admin.updatedAt = new Date().toISOString();
+        }
+    });
+
     let staffArr = Object.values(activeAdmins);
     staffArr.sort((a, b) => {
-        const order = { "on_duty": 1, "break": 2, "online": 3, "stop": 3, "offline": 3 };
-        return (order[a.status] || 4) - (order[b.status] || 4);
+        const order = { "on_duty": 1, "break": 2, "online": 3, "offline": 4 };
+        return (order[a.status] || 5) - (order[b.status] || 5);
     });
     res.json({ staff: staffArr });
 });
@@ -229,19 +259,25 @@ app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
 
 app.post('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
-    const { targetTimestamp, senderId } = req.body;
+    const { days, hours, minutes, senderId } = req.body;
 
     const admin = activeAdmins[senderId];
     if (!admin || admin.status !== "on_duty" || admin.serverCode !== serverCode) {
         return res.status(403).json({ error: "يجب أن تكون في النوبة لجدولة الإغلاق" });
     }
 
-    if (!targetTimestamp || isNaN(targetTimestamp) || targetTimestamp <= Date.now()) {
-        return res.status(400).json({ error: "الوقت المحدد غير صالح أو في الماضي" });
+    const dMs = (parseInt(days) || 0) * 24 * 60 * 60 * 1000;
+    const hMs = (parseInt(hours) || 0) * 60 * 60 * 1000;
+    const mMs = (parseInt(minutes) || 0) * 60 * 1000;
+    const totalOffset = dMs + hMs + mMs;
+
+    if (totalOffset <= 0) {
+        return res.status(400).json({ error: "يرجى تحديد وقت مستقبلي صالح" });
     }
 
+    const targetTimestamp = Date.now() + totalOffset;
     const d = new Date(targetTimestamp);
-    const formattedTime = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedTime = d.toLocaleString([], { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     scheduledShutdowns[serverCode] = {
         executeAt: targetTimestamp,

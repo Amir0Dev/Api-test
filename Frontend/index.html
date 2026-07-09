@@ -22,7 +22,7 @@
         button:active { transform: scale(0.97); }
     </style>
 </head>
-<body class="min-h-screen p-6 relative">
+<body class="min-h-screen p-6 relative flex flex-col">
 
     <div id="loginScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center">
         <div class="panel p-6 rounded-lg border border-slate-800 text-center max-w-sm w-full shadow-2xl">
@@ -72,28 +72,32 @@
                 <img id="adminHeaderAvatar" src="" class="w-8 h-8 rounded-full border border-slate-700 object-cover">
                 <span id="adminHeaderName" class="text-sm font-semibold text-slate-200"></span>
             </div>
-            
             <div>
-                <h1 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                    <span>Central Admin System</span>
-                    <span id="adminBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700 font-normal hidden">Loading...</span>
-                </h1>
-                <p class="text-xs text-slate-500 mt-1">Live Updates | Silent Control System <span id="scheduledShutdownInfo" class="text-amber-500 font-medium ml-1"></span></p>
+                <span id="adminBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700 font-normal hidden">Loading...</span>
+                <span id="scheduledShutdownInfo" class="text-amber-500 font-medium ml-1 text-xs"></span>
             </div>
         </div>
         
         <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
             <input id="serverCodeInput" type="text" placeholder="SERVER CODE..." class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300 uppercase">
             <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
-            <input id="scheduleTimeInput" type="time" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs focus:outline-none focus:border-slate-600 transition-all text-slate-300 w-full md:w-auto">
+            
+            <div class="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 w-full md:w-auto">
+                <input id="scheduleDaysInput" type="number" min="0" placeholder="Days" class="bg-transparent text-center text-xs text-slate-300 w-10 focus:outline-none">
+                <span class="text-slate-600 text-xs">:</span>
+                <input id="scheduleHoursInput" type="number" min="0" max="23" placeholder="Hours" class="bg-transparent text-center text-xs text-slate-300 w-10 focus:outline-none">
+                <span class="text-slate-600 text-xs">:</span>
+                <input id="scheduleMinutesInput" type="number" min="0" max="59" placeholder="Min" class="bg-transparent text-center text-xs text-slate-300 w-10 focus:outline-none">
+            </div>
+
             <button id="scheduleShutdownBtn" onclick="scheduleShutdown()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto">Schedule Shutdown</button>
             <button id="cancelScheduleBtn" onclick="cancelScheduledShutdown()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-3 py-2 rounded-lg text-xs transition-all w-full md:w-auto hidden">Cancel Schedule</button>
             <button id="shutdownBtn" onclick="shutdownServer()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Shutdown Server</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch">
+        <div class="space-y-6 flex flex-col justify-start">
             <div class="panel rounded-xl p-5 shadow-lg space-y-4">
                 <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
                     <span>Personal Duty Control</span>
@@ -107,28 +111,28 @@
                 </div>
             </div>
 
-            <div class="panel rounded-xl p-5 shadow-lg">
+            <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-3 text-slate-300">Active Staff Status</h2>
-                <div id="staffContainer" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs">
+                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1">
                     <p class="text-slate-600 text-center py-2">No active staff online currently</p>
                 </div>
             </div>
 
-            <div class="panel rounded-xl p-5 shadow-lg">
+            <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
-                <div id="teamsContainer" class="space-y-2 text-xs">
+                <div id="teamsContainer" class="space-y-2 text-xs overflow-y-auto flex-1">
                     <p class="text-slate-600 text-center py-4">Waiting for server connection...</p>
                 </div>
             </div>
         </div>
 
-        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg">
+        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg h-full">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
                 <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Live Monitoring</span>
             </div>
             
-            <div class="overflow-x-auto flex-1">
+            <div class="overflow-x-auto flex-1 h-full">
                 <table class="w-full text-left" id="mainTable">
                     <thead>
                         <tr class="border-b border-slate-800 text-slate-500 text-xs">
@@ -153,11 +157,9 @@
         let currentModalUserId = null;
 
         window.addEventListener('beforeunload', () => {
-            if (currentAdmin && adminDutyStatus === "on_duty") {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", `${BASE_URL}/api/admin/duty`, false);
-                xhr.setRequestHeader("Content-Type", "application/json");
-                xhr.send(JSON.stringify({ userId: currentAdmin.userId, action: 'stop', serverCode: document.getElementById('serverCodeInput').value.trim() }));
+            if (currentAdmin) {
+                const data = JSON.stringify({ userId: currentAdmin.userId });
+                navigator.sendBeacon(`${BASE_URL}/api/admin/disconnect`, data);
             }
         });
 
@@ -277,7 +279,8 @@
         }
 
         function fetchStaffData() {
-            fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin ? currentAdmin.userId : 0}`)
+            if (!currentAdmin) return;
+            fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin.userId}`)
                 .then(res => res.json())
                 .then(data => {
                     const container = document.getElementById('staffContainer');
@@ -287,27 +290,30 @@
                         return;
                     }
                     data.staff.forEach(member => {
-                        let statusText = "offline";
+                        let statusText = "Offline";
                         let statusClass = "text-slate-500";
                         let timeStr = formatElapsed(member.updatedAt);
 
                         if (member.status === "on_duty") { 
-                            statusText = `Started Shift (${member.serverCode || 'Unknown Server'}) ${timeStr}`;
+                            statusText = `Shift (${member.serverCode || 'Unknown'}) ${timeStr}`;
                             statusClass = "text-emerald-400 font-medium";
                         } else if (member.status === "break") { 
                             statusText = `On Break ${timeStr}`;
                             statusClass = "text-amber-400"; 
                         } else if (member.status === "online") {
-                            statusText = `Online ${timeStr}`;
+                            statusText = `Online`;
                             statusClass = "text-blue-400";
-                        } else if (member.status === "stop" || member.status === "offline" || member.status === "off_duty") {
-                            statusText = `Ended Shift ${timeStr}`;
-                            statusClass = "text-slate-400";
+                        } else {
+                            statusText = `Offline`;
+                            statusClass = "text-slate-500";
                         }
 
                         container.innerHTML += `
                             <div class="flex justify-between items-center bg-slate-900/40 p-2 rounded border border-slate-800/60">
-                                <span class="text-slate-300 font-mono">${member.username}</span>
+                                <div class="flex items-center gap-2">
+                                    <img src="${BASE_URL}/api/avatar/${member.userId}" class="w-6 h-6 rounded-full border border-slate-700 object-cover bg-slate-950">
+                                    <span class="text-slate-300 font-mono">${member.username}</span>
+                                </div>
                                 <span class="${statusClass}">${statusText}</span>
                             </div>`;
                     });
@@ -400,29 +406,19 @@
                 return;
             }
             const serverCode = document.getElementById('serverCodeInput').value.trim();
-            const timeString = document.getElementById('scheduleTimeInput').value;
+            const days = document.getElementById('scheduleDaysInput').value;
+            const hours = document.getElementById('scheduleHoursInput').value;
+            const minutes = document.getElementById('scheduleMinutesInput').value;
             
-            if (!serverCode || !timeString) {
-                createToast("Please enter a server code and select a valid time.");
-                return;
-            }
-
-            const [hours, minutes] = timeString.split(':');
-            const targetTime = new Date();
-            targetTime.setHours(parseInt(hours, 10));
-            targetTime.setMinutes(parseInt(minutes, 10));
-            targetTime.setSeconds(0);
-            targetTime.setMilliseconds(0);
-
-            if (targetTime.getTime() <= Date.now()) {
-                createToast("Selected time has already passed today.");
+            if (!serverCode) {
+                createToast("Please enter a server code.");
                 return;
             }
 
             fetch(`${BASE_URL}/api/servers/${serverCode}/schedule-shutdown`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetTimestamp: targetTime.getTime(), senderId: currentAdmin.userId })
+                body: JSON.stringify({ days, hours, minutes, senderId: currentAdmin.userId })
             }).then(res => res.json())
             .then(data => {
                 if (data.error) {
@@ -574,6 +570,14 @@
                     document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
                     const playersList = data.players || [];
                     
+                    if (data.scheduledShutdown) {
+                        document.getElementById('scheduledShutdownInfo').innerText = `| Scheduled Shutdown at: ${data.scheduledShutdown.time}`;
+                        document.getElementById('cancelScheduleBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('scheduledShutdownInfo').innerText = '';
+                        document.getElementById('cancelScheduleBtn').classList.add('hidden');
+                    }
+
                     if (playersList.length === 0) {
                         document.getElementById('noPlayersMessage').classList.remove('hidden');
                         document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
