@@ -19,7 +19,7 @@ const REDIRECT_URI = process.env.RedirectURI;
 
 const ALLOWED_ADMINS = [
     2748615471,
-    1,
+    9801416277,
 ];
 
 let liveServers = {};      
