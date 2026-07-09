@@ -115,15 +115,7 @@ app.get('/oauth/callback', async (req, res) => {
 app.get('/api/auth/status', (req, res) => {
     const { state } = req.query;
     if (!state || !oauthStates[state]) return res.json({ status: "unknown" });
-
-    const session = oauthStates[state];
-    if (session.status === "success") {
-        const { userId, username } = session.adminData;
-        if (!activeAdmins[userId]) {
-            activeAdmins[userId] = { userId, username, status: "Online", serverCode: null, updatedAt: new Date().toISOString(), lastSeen: Date.now() };
-        }
-    }
-    res.json(session);
+    res.json(oauthStates[state]);
 });
 
 app.post('/api/admin/disconnect', (req, res) => {
@@ -135,11 +127,21 @@ app.post('/api/admin/disconnect', (req, res) => {
 });
 
 app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
-    const { userId, action, serverCode } = req.body;
-    const admin = activeAdmins[userId];
+    const { userId, username, action, serverCode } = req.body;
+    const adminId = parseInt(userId);
 
-    if (!admin) return res.status(404).json({ error: "Admin not found" });
+    if (!activeAdmins[adminId]) {
+        activeAdmins[adminId] = {
+            userId: adminId,
+            username: username || "Admin",
+            status: "Online",
+            serverCode: null,
+            updatedAt: new Date().toISOString(),
+            lastSeen: Date.now()
+        };
+    }
 
+    const admin = activeAdmins[adminId];
     admin.lastSeen = Date.now();
 
     if (action === "start") {
@@ -173,20 +175,32 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     res.status(400).json({ error: "Unknown action" });
 });
 
-app.get('/api/admin/staff', (req, res) => {
+app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
     const currentUserId = parseInt(req.query.userId);
+    const currentUsername = req.query.username;
     const now = Date.now();
 
-    if (currentUserId && activeAdmins[currentUserId]) {
-        activeAdmins[currentUserId].lastSeen = now;
-        if (activeAdmins[currentUserId].status === "Offline") {
-            activeAdmins[currentUserId].status = "Online";
+    if (currentUserId && ALLOWED_ADMINS.includes(currentUserId)) {
+        if (!activeAdmins[currentUserId]) {
+            activeAdmins[currentUserId] = {
+                userId: currentUserId,
+                username: currentUsername || "Admin",
+                status: "Online",
+                serverCode: null,
+                updatedAt: new Date().toISOString(),
+                lastSeen: now
+            };
+        } else {
+            activeAdmins[currentUserId].lastSeen = now;
+            if (activeAdmins[currentUserId].status === "Offline") {
+                activeAdmins[currentUserId].status = "Online";
+            }
         }
     }
 
     Object.keys(activeAdmins).forEach(userId => {
-        const admin = activeAdmins[userId];
-        if (!admin.lastSeen || now - admin.lastSeen > 25000) {
+        const idNum = parseInt(userId);
+        if (!ALLOWED_ADMINS.includes(idNum) || !activeAdmins[userId].lastSeen || now - activeAdmins[userId].lastSeen > 25000) {
             delete activeAdmins[userId];
         }
     });
@@ -289,7 +303,7 @@ app.delete('/api/servers/:serverCode/schedule-shutdown', verifyAdminAccess, (req
     res.json({ success: true, message: "Scheduled shutdown cancelled" });
 });
 
-app.get('/api/servers/:serverCode/players', (req, res) => {
+app.get('/api/servers/:serverCode/players', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
     const serverData = liveServers[serverCode];
     if (!serverData) return res.status(404).json({ error: "Server not found" });
@@ -301,7 +315,7 @@ app.get('/api/servers/:serverCode/players', (req, res) => {
     });
 });
 
-app.get('/api/servers/:serverCode/players/:playerId', (req, res) => {
+app.get('/api/servers/:serverCode/players/:playerId', verifyAdminAccess, (req, res) => {
     const { serverCode, playerId } = req.params;
     const serverData = liveServers[serverCode];
     if (!serverData) return res.status(404).json({ error: "Server not found" });

@@ -26,7 +26,7 @@
 
     <div id="loginScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center">
         <div class="panel p-6 rounded-lg border border-slate-800 text-center max-w-sm w-full shadow-2xl">
-            <p class="text-slate-300 text-sm mb-4">Please sign in to send an unban request.</p>
+            <p class="text-slate-300 text-sm mb-4">Please sign in to access the manager dashboard.</p>
             <button onclick="startRobloxOAuth()" class="text-blue-500 hover:text-blue-400 text-sm underline transition-colors">Sign in</button>
             <div id="authStatusText" class="text-xs text-slate-500 mt-4 hidden"></div>
         </div>
@@ -146,7 +146,7 @@
 
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-3 text-slate-300">Staff Status</h2>
-                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1"></div>
+                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">Enter a server code to view active staff...</div>
             </div>
 
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
@@ -179,7 +179,6 @@
 
     <script>
         const BASE_URL = window.location.origin;
-        const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%231e293b'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%2347556a'/%3E%3Cellipse cx='16' cy='26' rx='9' ry='6' fill='%2347556a'/%3E%3C/svg%3E";
         let autoFetchInterval = null;
         let staffInterval = null;
         let uptimeInterval = null;
@@ -250,7 +249,6 @@
 
         function startRobloxOAuth() {
             const state = generateRandomState();
-            
             window.open(`${BASE_URL}/oauth/login?state=${state}`, '_blank');
             const checkInterval = setInterval(() => {
                 fetch(`${BASE_URL}/api/auth/status?state=${state}`)
@@ -269,7 +267,6 @@
                                 profileHeader.classList.add('flex');
                             }
                             setDutyStatusOnline();
-                            startStaffMonitoring();
                         } else if (data.status === "unauthorized" || data.status === "failed") {
                             clearInterval(checkInterval);
                         }
@@ -294,7 +291,7 @@
             fetch(`${BASE_URL}/api/admin/duty`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: currentAdmin.userId, action: actionType, serverCode: codeToUse })
+                body: JSON.stringify({ userId: currentAdmin.userId, username: currentAdmin.username, action: actionType, serverCode: codeToUse })
             })
             .then(async res => {
                 const data = await res.json();
@@ -323,14 +320,18 @@
         }
 
         function startStaffMonitoring() {
+            if (staffInterval) clearInterval(staffInterval);
             fetchStaffData();
             staffInterval = setInterval(fetchStaffData, 3000);
         }
 
         function fetchStaffData() {
-            if (!currentAdmin) return;
-            fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin.userId}`)
-                .then(res => res.json())
+            if (!currentAdmin || !activeServerCode) return;
+            fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin.userId}&username=${currentAdmin.username}`)
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
                 .then(data => {
                     const container = document.getElementById('staffContainer');
                     container.innerHTML = '';
@@ -361,7 +362,7 @@
                                 <span class="${statusClass}">${statusText}</span>
                             </div>`;
                     });
-                });
+                }).catch(() => {});
         }
 
         function toggleAutoFetch() {
@@ -395,7 +396,9 @@
 
         function stopMonitoring() {
             clearInterval(autoFetchInterval);
+            if (staffInterval) clearInterval(staffInterval);
             autoFetchInterval = null;
+            staffInterval = null;
             activeServerCode = null;
             currentServerStartTime = 0;
             
@@ -411,6 +414,7 @@
             document.getElementById('noPlayersMessage').classList.remove('hidden');
             document.getElementById('noPlayersMessage').innerText = "Please enter server code and connect";
             document.getElementById('teamsContainer').innerHTML = '<p class="text-slate-600 text-center py-4">Waiting for server connection...</p>';
+            document.getElementById('staffContainer').innerHTML = 'Enter a server code to view active staff...';
             
             if (adminDutyStatus === "on_duty") {
                 updateDuty('stop');
@@ -420,16 +424,23 @@
         function fetchData() {
             if (!activeServerCode || !currentAdmin) return;
 
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players?userId=${currentAdmin.userId}`)
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
                 .then(res => {
+                    if (res.status === 403) {
+                        createToast("Access Denied: You are not an authorized administrator.", true);
+                        stopMonitoring();
+                        throw new Error("Unauthorized");
+                    }
                     if (!res.ok) {
-                        createToast("server has been shutdown or unavaiable", true);
+                        createToast("Server has been shutdown or unavailable.", true);
                         stopMonitoring();
                         throw new Error("Fetch failed");
                     }
                     return res.json();
                 })
                 .then(data => {
+                    if (!staffInterval) startStaffMonitoring();
+
                     currentServerStartTime = data.startTime || 0;
                     document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
                     const playersList = data.players || [];
@@ -474,8 +485,8 @@
                         const pName = player.name;
                         const pUserId = player.userId || 1;
                         const pTime = player.timeInGame || 0;
-                        const pVehicle = player.inVehicle || false;
                         const pFrozen = player.isFrozen || false;
+                        const pVehicle = player.inVehicle || false;
                         
                         const existingGroup = document.getElementById(`player-group-${pName}`);
 
@@ -626,7 +637,7 @@
 
         function cancelScheduledShutdown() {
             if (!activeServerCode || !currentAdmin) return;
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown?userId=${currentAdmin.userId}`, {
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`, {
                 method: 'DELETE'
             }).then(res => res.json())
             .then(data => {
@@ -681,7 +692,7 @@
         function fetchAndUpdateModalPlayer() {
             if (!currentAdmin || !currentModalUserId || !activeServerCode) return;
 
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}`)
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
                 .then(res => res.json())
                 .then(player => {
                     if (player.error) {
