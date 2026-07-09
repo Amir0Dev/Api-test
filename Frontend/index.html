@@ -2,24 +2,66 @@
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <title>Manager Dashboard</title>
+    <title>Manager Dashboard & Minimap</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background-color: #090d16;
-            color: #cbd5e1;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        .panel {
-            background: rgba(17, 24, 39, 0.7);
-            border: 1px solid rgba(51, 65, 85, 0.4);
-        }
+        body { background-color: #090d16; color: #cbd5e1; font-family: system-ui, -apple-system, sans-serif; }
+        .panel { background: rgba(17, 24, 39, 0.7); border: 1px solid rgba(51, 65, 85, 0.4); }
         .toast-notif { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         button:active { transform: scale(0.97); }
+        
+        #mapOuterContainer {
+            width: 100%;
+            height: 600px;
+            overflow: hidden;
+            position: relative;
+            background-color: #05080f;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(51, 65, 85, 0.4);
+            cursor: grab;
+        }
+        #mapOuterContainer:active { cursor: grabbing; }
+        
+        #mapInnerArea {
+            position: absolute;
+            transform-origin: 0 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        .player-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        .player-marker:hover { z-index: 20; transform: translate(-50%, -50%) scale(1.1); }
+        .player-marker img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background-color: #111827;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+        .player-marker span {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-top: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
     </style>
 </head>
 <body class="min-h-screen p-6 relative flex flex-col">
@@ -36,7 +78,6 @@
         <div class="panel p-6 rounded-xl max-w-sm w-full space-y-4 shadow-2xl border border-slate-700 relative bg-[#0f172a]">
             <button onclick="closeServerModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-400 text-lg">✕</button>
             <h3 class="text-lg font-bold text-slate-100 mb-2">Moderate Server</h3>
-            
             <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
                 <div class="flex justify-between"><span>Server Uptime:</span><span id="modalServerUptime" class="text-slate-400 font-mono">00h 00m 00s</span></div>
                 <div class="flex justify-between items-center">
@@ -47,32 +88,20 @@
                     </div>
                 </div>
             </div>
-
             <button onclick="shutdownServer()" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Immediate Server Shutdown</button>
-            
             <div class="border-t border-slate-800 my-4 pt-4 space-y-3">
                 <label class="text-xs text-slate-300 font-semibold block">Schedule Shutdown Time</label>
                 <div class="space-y-3">
                     <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">Select Date (Max 14 days)</label>
-                        <input type="date" id="schedDate" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="date" id="schedDate" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">Hour</label>
-                            <select id="schedHour" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">Minute</label>
-                            <select id="schedMinute" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">AM / PM</label>
-                            <select id="schedAmpm" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                            </select>
-                        </div>
+                        <select id="schedHour" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200"></select>
+                        <select id="schedMinute" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200"></select>
+                        <select id="schedAmpm" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
                     </div>
                 </div>
                 <button onclick="scheduleShutdown()" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 border border-blue-800/50 text-xs py-2.5 rounded-lg transition-colors mt-2">Confirm Schedule</button>
@@ -97,16 +126,16 @@
             <div class="grid grid-cols-2 gap-2">
                 <button id="modalKickBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors">Kick</button>
                 <button id="modalFreezeBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors"></button>
-                <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">Bring</button>
-                <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">To Player</button>
+                <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg font-mono">Bring</button>
+                <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg font-mono">To Player</button>
             </div>
-            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban from Server</button>
+            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg">Ban from Server</button>
             <div id="modalBanForm" class="hidden flex-col gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                <input id="modalBanReason" type="text" placeholder="Ban reason..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <input id="modalBanDuration" type="number" placeholder="Duration in seconds..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                <input id="modalBanReason" type="text" placeholder="Ban reason..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300">
+                <input id="modalBanDuration" type="number" placeholder="Duration in seconds..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300">
                 <div class="flex gap-2 mt-1">
-                    <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs transition-colors">Confirm Ban</button>
-                    <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800 transition-colors">Cancel</button>
+                    <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs">Confirm Ban</button>
+                    <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800">Cancel</button>
                 </div>
             </div>
         </div>
@@ -129,26 +158,23 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch mb-6">
         <div class="space-y-6 flex flex-col justify-start">
             <div class="panel rounded-xl p-5 shadow-lg space-y-4">
                 <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
                     <span>Duty Control</span>
                     <span id="dutyStatusBadge" class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">Offline</span>
                 </h2>
-                
                 <div class="grid grid-cols-3 gap-2">
-                    <button onclick="updateDuty('start')" class="bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-900 text-emerald-400 text-xs py-2.5 rounded-lg font-medium transition-all">Start Shift</button>
-                    <button onclick="updateDuty('break')" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-900 text-amber-400 text-xs py-2.5 rounded-lg font-medium transition-all">Break</button>
-                    <button onclick="updateDuty('stop')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 text-xs py-2.5 rounded-lg font-medium transition-all">End Shift</button>
+                    <button onclick="updateDuty('start')" class="bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-900 text-emerald-400 text-xs py-2.5 rounded-lg font-medium">Start Shift</button>
+                    <button onclick="updateDuty('break')" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-900 text-amber-400 text-xs py-2.5 rounded-lg font-medium">Break</button>
+                    <button onclick="updateDuty('stop')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 text-xs py-2.5 rounded-lg font-medium">End Shift</button>
                 </div>
             </div>
-
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-3 text-slate-300">Staff Status</h2>
                 <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">Enter a server code to view active staff...</div>
             </div>
-
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
                 <div id="teamsContainer" class="space-y-2 text-xs overflow-y-auto flex-1">
@@ -162,7 +188,6 @@
                 <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
                 <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Connecting</span>
             </div>
-            
             <div class="overflow-x-auto flex-1 h-full">
                 <table class="w-full text-left" id="mainTable">
                     <thead>
@@ -177,8 +202,25 @@
         </div>
     </div>
 
+    <div class="panel rounded-xl p-6 flex flex-col shadow-lg mb-10 w-full">
+        <h2 class="text-sm font-semibold text-slate-300 mb-4">Live Server Minimap</h2>
+        <div id="mapOuterContainer">
+            <div id="mapInnerArea"></div>
+        </div>
+    </div>
+
     <script>
         const BASE_URL = window.location.origin;
+
+        const MAP_IMAGE_URL = "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=2000&h=2000"; 
+        const ROBLOX_MAP_MIN_X = -2000;
+        const ROBLOX_MAP_MAX_X = 2000;
+        const ROBLOX_MAP_MIN_Z = -2000;
+        const ROBLOX_MAP_MAX_Z = 2000;
+        
+        const MAP_WEB_WIDTH = 2000;
+        const MAP_WEB_HEIGHT = 2000;
+
         let autoFetchInterval = null;
         let staffInterval = null;
         let uptimeInterval = null;
@@ -190,11 +232,55 @@
         let currentServerStartTime = 0;
         let lastSoundTime = 0;
 
+        let mapScale = 1;
+        let mapPanning = false;
+        let mapPointX = 0;
+        let mapPointY = 0;
+        let mapStart = { x: 0, y: 0 };
+        const mapOuter = document.getElementById('mapOuterContainer');
+        const mapInner = document.getElementById('mapInnerArea');
+
+        mapInner.style.width = MAP_WEB_WIDTH + 'px';
+        mapInner.style.height = MAP_WEB_HEIGHT + 'px';
+        mapInner.style.backgroundImage = `url('${MAP_IMAGE_URL}')`;
+        mapInner.style.transform = `translate(0px, 0px) scale(1)`;
+
+        mapOuter.onmousedown = (e) => {
+            e.preventDefault();
+            mapPanning = true;
+            mapStart = { x: e.clientX - mapPointX, y: e.clientY - mapPointY };
+        };
+
+        mapOuter.onmousemove = (e) => {
+            if (!mapPanning) return;
+            mapPointX = e.clientX - mapStart.x;
+            mapPointY = e.clientY - mapStart.y;
+            mapInner.style.transform = `translate(${mapPointX}px, ${mapPointY}px) scale(${mapScale})`;
+        };
+
+        mapOuter.onmouseup = () => mapPanning = false;
+        mapOuter.onmouseleave = () => mapPanning = false;
+
+        mapOuter.onwheel = (e) => {
+            e.preventDefault();
+            let xs = (e.clientX - mapOuter.getBoundingClientRect().left - mapPointX) / mapScale;
+            let ys = (e.clientY - mapOuter.getBoundingClientRect().top - mapPointY) / mapScale;
+            let delta = (e.deltaY || e.detail || e.wheelDelta) < 0 ? 1 : -1;
+            mapScale *= (delta > 0) ? 1.1 : 0.9;
+            mapScale = Math.max(0.1, Math.min(mapScale, 5));
+            mapPointX = e.clientX - mapOuter.getBoundingClientRect().left - xs * mapScale;
+            mapPointY = e.clientY - mapOuter.getBoundingClientRect().top - ys * mapScale;
+            mapInner.style.transform = `translate(${mapPointX}px, ${mapPointY}px) scale(${mapScale})`;
+        };
+
+        function robloxToMapPx(rX, rZ) {
+            let px = ((rX - ROBLOX_MAP_MIN_X) / (ROBLOX_MAP_MAX_X - ROBLOX_MAP_MIN_X)) * MAP_WEB_WIDTH;
+            let py = ((rZ - ROBLOX_MAP_MIN_Z) / (ROBLOX_MAP_MAX_Z - ROBLOX_MAP_MIN_Z)) * MAP_WEB_HEIGHT;
+            return { x: px, y: py };
+        }
+
         window.addEventListener('beforeunload', () => {
-            if (currentAdmin) {
-                const data = JSON.stringify({ userId: currentAdmin.userId });
-                navigator.sendBeacon(`${BASE_URL}/api/admin/disconnect`, data);
-            }
+            if (currentAdmin) navigator.sendBeacon(`${BASE_URL}/api/admin/disconnect`, JSON.stringify({ userId: currentAdmin.userId }));
         });
 
         function playToastSound() {
@@ -205,38 +291,29 @@
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(400, ctx.currentTime);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(400, ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1);
             } catch(e) {}
         }
 
         function createToast(message, isImportant = false) {
             const container = document.getElementById('notificationContainer');
-            for (let child of container.children) {
-                if (child.innerText.includes(message)) return;
-            }
+            for (let child of container.children) { if (child.innerText.includes(message)) return; }
             if (isImportant) playToastSound();
-            
             const toast = document.createElement('div');
             toast.className = `toast-notif p-4 rounded-lg text-xs shadow-lg border pointer-events-auto flex items-center justify-between bg-slate-900 border-slate-800 text-slate-300`;
             toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-slate-400">✕</button>`;
             container.appendChild(toast);
-            setTimeout(() => { toast.remove(); }, 3500);
+            setTimeout(() => toast.remove(), 3500);
         }
 
         function generateRandomState(length = 16) {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
+            for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
             return result;
         }
 
@@ -251,69 +328,48 @@
             const state = generateRandomState();
             window.open(`${BASE_URL}/oauth/login?state=${state}`, '_blank');
             const checkInterval = setInterval(() => {
-                fetch(`${BASE_URL}/api/auth/status?state=${state}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === "success") {
-                            clearInterval(checkInterval);
-                            currentAdmin = data.adminData;
-                            document.getElementById('loginScreen').classList.add('hidden');
-                            
-                            const profileHeader = document.getElementById('adminProfileHeader');
-                            if (profileHeader) {
-                                document.getElementById('adminHeaderName').innerText = currentAdmin.username;
-                                document.getElementById('adminHeaderAvatar').src = `${BASE_URL}/api/avatar/${currentAdmin.userId}`;
-                                profileHeader.classList.remove('hidden');
-                                profileHeader.classList.add('flex');
-                            }
-                            setDutyStatusOnline();
-                        } else if (data.status === "unauthorized" || data.status === "failed") {
-                            clearInterval(checkInterval);
+                fetch(`${BASE_URL}/api/auth/status?state=${state}`).then(res => res.json()).then(data => {
+                    if (data.status === "success") {
+                        clearInterval(checkInterval);
+                        currentAdmin = data.adminData;
+                        document.getElementById('loginScreen').classList.add('hidden');
+                        const profileHeader = document.getElementById('adminProfileHeader');
+                        if (profileHeader) {
+                            document.getElementById('adminHeaderName').innerText = currentAdmin.username;
+                            document.getElementById('adminHeaderAvatar').src = `${BASE_URL}/api/avatar/${currentAdmin.userId}`;
+                            profileHeader.classList.remove('hidden');
+                            profileHeader.classList.add('flex');
                         }
-                    });
+                        setDutyStatusOnline();
+                    } else if (data.status === "unauthorized" || data.status === "failed") {
+                        clearInterval(checkInterval);
+                    }
+                });
             }, 2000);
         }
 
         function updateDuty(actionType) {
             if (!currentAdmin) return;
             const codeToUse = activeServerCode || document.getElementById('serverCodeInput').value.trim();
-
-            if (actionType === "start" && !codeToUse) {
-                createToast("You must connect to a server first!", true);
-                return;
-            }
-
-            if (actionType === "break" && adminDutyStatus !== "on_duty") {
-                createToast("You cannot take a break without starting your shift first!", true);
-                return;
-            }
+            if (actionType === "start" && !codeToUse) { createToast("You must connect to a server first!", true); return; }
+            if (actionType === "break" && adminDutyStatus !== "on_duty") { createToast("You cannot take a break without starting your shift first!", true); return; }
 
             fetch(`${BASE_URL}/api/admin/duty`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: currentAdmin.userId, username: currentAdmin.username, action: actionType, serverCode: codeToUse })
-            })
-            .then(async res => {
+            }).then(async res => {
                 const data = await res.json();
-                if (!res.ok) {
-                    createToast(data.error || "Failed to update duty status.", true);
-                    return;
-                }
-                
+                if (!res.ok) { createToast(data.error || "Failed to update duty status.", true); return; }
                 adminDutyStatus = data.status;
                 const badge = document.getElementById('dutyStatusBadge');
-                
                 if (data.status === "on_duty") {
                     badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
-                    badge.innerText = "On Duty";
-                    createToast("Your live admin shift has started successfully.", true);
+                    badge.innerText = "On Duty"; createToast("Your live admin shift has started successfully.", true);
                 } else if (data.status === "break") {
                     badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
-                    badge.innerText = "On Break";
-                    createToast("You are now on a temporary break.", true);
+                    badge.innerText = "On Break"; createToast("You are now on a temporary break.", true);
                 } else {
-                    setDutyStatusOnline();
-                    createToast("Admin shift ended.", false);
+                    setDutyStatusOnline(); createToast("Admin shift ended.", false);
                 }
                 fetchStaffData();
             });
@@ -328,39 +384,16 @@
         function fetchStaffData() {
             if (!currentAdmin || !activeServerCode) return;
             fetch(`${BASE_URL}/api/admin/staff?userId=${currentAdmin.userId}&username=${currentAdmin.username}`)
-                .then(res => {
-                    if (!res.ok) throw new Error();
-                    return res.json();
-                })
+                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                 .then(data => {
                     const container = document.getElementById('staffContainer');
                     container.innerHTML = '';
-                    if (!data.staff || data.staff.length === 0) {
-                        return;
-                    }
+                    if (!data.staff || data.staff.length === 0) return;
                     data.staff.forEach(member => {
-                        let statusText = "Online";
-                        let statusClass = "text-blue-400";
-
-                        if (member.status === "on_duty") { 
-                            statusText = `On Duty`;
-                            statusClass = "text-emerald-400 font-medium";
-                        } else if (member.status === "break") { 
-                            statusText = `On Break`;
-                            statusClass = "text-amber-400"; 
-                        } else if (member.status === "Online") {
-                            statusText = `Online`;
-                            statusClass = "text-blue-400";
-                        }
-
-                        container.innerHTML += `
-                            <div class="flex justify-between items-center bg-slate-900/40 p-2 rounded border border-slate-800/60">
-                                <div class="flex items-center gap-2">
-                                    <img src="${BASE_URL}/api/avatar/${member.userId}" class="w-6 h-6 rounded-full border border-slate-700 object-cover bg-slate-950">
-                                    <span class="text-slate-300 font-mono">${member.username}</span>
-                                </div>
-                                <span class="${statusClass}">${statusText}</span>
-                            </div>`;
+                        let statusText = "Online", statusClass = "text-blue-400";
+                        if (member.status === "on_duty") { statusText = "On Duty"; statusClass = "text-emerald-400 font-medium"; } 
+                        else if (member.status === "break") { statusText = "On Break"; statusClass = "text-amber-400"; }
+                        container.innerHTML += `<div class="flex justify-between items-center bg-slate-900/40 p-2 rounded border border-slate-800/60"><div class="flex items-center gap-2"><img src="${BASE_URL}/api/avatar/${member.userId}" class="w-6 h-6 rounded-full border border-slate-700 object-cover bg-slate-950"><span class="text-slate-300 font-mono">${member.username}</span></div><span class="${statusClass}">${statusText}</span></div>`;
                     });
                 }).catch(() => {});
         }
@@ -371,19 +404,13 @@
             const modBtn = document.getElementById('moderateServerBtn');
 
             if (!activeServerCode) {
-                if (!inputVal) {
-                    createToast("Please enter server code first.", true);
-                    return;
-                }
+                if (!inputVal) { createToast("Please enter server code first.", true); return; }
                 activeServerCode = inputVal;
                 document.getElementById('serverCodeInput').value = '';
-                
                 document.getElementById('liveBadge').classList.remove('hidden');
                 document.getElementById('noPlayersMessage').innerText = "Fetching live data...";
-                
                 fetchData();
                 autoFetchInterval = setInterval(fetchData, 2000);
-
                 connectBtn.innerText = "Disconnect";
                 connectBtn.className = "bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
                 modBtn.classList.remove('hidden');
@@ -397,150 +424,100 @@
         function stopMonitoring() {
             clearInterval(autoFetchInterval);
             if (staffInterval) clearInterval(staffInterval);
-            autoFetchInterval = null;
-            staffInterval = null;
-            activeServerCode = null;
-            currentServerStartTime = 0;
+            autoFetchInterval = null; staffInterval = null; activeServerCode = null; currentServerStartTime = 0;
             
             const connectBtn = document.getElementById('connectBtn');
-            connectBtn.innerText = "Connect";
-            connectBtn.className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
+            connectBtn.innerText = "Connect"; connectBtn.className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
             
             document.getElementById('serverCodeInput').value = '';
-            document.getElementById('moderateServerBtn').classList.add('hidden');
-            document.getElementById('liveBadge').classList.add('hidden');
+            document.getElementById('moderateServerBtn').classList.add('hidden'); document.getElementById('liveBadge').classList.add('hidden');
             document.querySelectorAll('.player-group').forEach(el => el.remove());
+            document.querySelectorAll('.player-marker').forEach(el => el.remove());
             document.getElementById('totalPlayersCount').innerText = "0";
-            document.getElementById('noPlayersMessage').classList.remove('hidden');
-            document.getElementById('noPlayersMessage').innerText = "Please enter server code and connect";
+            document.getElementById('noPlayersMessage').classList.remove('hidden'); document.getElementById('noPlayersMessage').innerText = "Please enter server code and connect";
             document.getElementById('teamsContainer').innerHTML = '<p class="text-slate-600 text-center py-4">Waiting for server connection...</p>';
             document.getElementById('staffContainer').innerHTML = 'Enter a server code to view active staff...';
-            
-            if (adminDutyStatus === "on_duty") {
-                updateDuty('stop');
-            }
+            if (adminDutyStatus === "on_duty") updateDuty('stop');
         }
 
         function fetchData() {
             if (!activeServerCode || !currentAdmin) return;
-
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/players?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
                 .then(res => {
-                    if (res.status === 403) {
-                        createToast("Access Denied: You are not an authorized administrator.", true);
-                        stopMonitoring();
-                        throw new Error("Unauthorized");
-                    }
-                    if (!res.ok) {
-                        createToast("Server has been shutdown or unavailable.", true);
-                        stopMonitoring();
-                        throw new Error("Fetch failed");
-                    }
+                    if (res.status === 403) { createToast("Access Denied", true); stopMonitoring(); throw new Error("Unauthorized"); }
+                    if (!res.ok) { createToast("Server offline", true); stopMonitoring(); throw new Error("Fetch failed"); }
                     return res.json();
                 })
                 .then(data => {
                     if (!staffInterval) startStaffMonitoring();
-
                     currentServerStartTime = data.startTime || 0;
                     document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
                     const playersList = data.players || [];
                     
-                    if (data.scheduledShutdown) {
-                        document.getElementById('modalServerSchedule').innerText = data.scheduledShutdown.time;
-                        document.getElementById('cancelScheduleBtn').classList.remove('hidden');
-                    } else {
-                        document.getElementById('modalServerSchedule').innerText = 'None';
-                        document.getElementById('cancelScheduleBtn').classList.add('hidden');
-                    }
+                    if (data.scheduledShutdown) { document.getElementById('modalServerSchedule').innerText = data.scheduledShutdown.time; document.getElementById('cancelScheduleBtn').classList.remove('hidden'); } 
+                    else { document.getElementById('modalServerSchedule').innerText = 'None'; document.getElementById('cancelScheduleBtn').classList.add('hidden'); }
 
                     if (playersList.length === 0) {
-                        document.getElementById('noPlayersMessage').classList.remove('hidden');
-                        document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
+                        document.getElementById('noPlayersMessage').classList.remove('hidden'); document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
                         document.querySelectorAll('.player-group').forEach(el => el.remove());
+                        document.querySelectorAll('.player-marker').forEach(el => el.remove());
                         return;
                     }
 
                     document.getElementById('noPlayersMessage').classList.add('hidden');
-                    const teamsContainer = document.getElementById('teamsContainer');
-                    teamsContainer.innerHTML = '';
+                    const teamsContainer = document.getElementById('teamsContainer'); teamsContainer.innerHTML = '';
                     const summary = data.teamsSummary || {};
-                    for (const [teamName, count] of Object.entries(summary)) {
-                        teamsContainer.innerHTML += `
-                            <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center">
-                                <span class="text-slate-300">${teamName}</span>
-                                <span class="text-slate-400 font-mono text-sm">${count}</span>
-                            </div>`;
-                    }
+                    for (const [teamName, count] of Object.entries(summary)) { teamsContainer.innerHTML += `<div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center"><span class="text-slate-300">${teamName}</span><span class="text-slate-400 font-mono text-sm">${count}</span></div>`; }
 
                     const tableMain = document.getElementById('mainTable');
                     const fetchedNames = playersList.map(p => p.name);
 
-                    document.querySelectorAll('.player-group').forEach(group => {
-                        if (!fetchedNames.includes(group.getAttribute('data-name'))) {
-                            group.remove();
-                        }
-                    });
+                    document.querySelectorAll('.player-group').forEach(group => { if (!fetchedNames.includes(group.getAttribute('data-name'))) group.remove(); });
+                    document.querySelectorAll('.player-marker').forEach(marker => { if (!fetchedNames.includes(marker.getAttribute('data-name'))) marker.remove(); });
 
                     playersList.forEach(player => {
-                        const pName = player.name;
-                        const pUserId = player.userId || 1;
-                        const pTime = player.timeInGame || 0;
-                        const pFrozen = player.isFrozen || false;
-                        const pVehicle = player.inVehicle || false;
-                        
+                        const pName = player.name, pUserId = player.userId || 1, pTime = player.timeInGame || 0, pFrozen = player.isFrozen || false, pVehicle = player.inVehicle || false, pX = player.x || 0, pZ = player.z || 0;
                         const existingGroup = document.getElementById(`player-group-${pName}`);
-
                         if (existingGroup) {
                             document.getElementById(`team-${pName}`).innerText = player.team;
                             existingGroup.onclick = () => openPlayerModal(pName, player.team, pTime, pVehicle, pFrozen, pUserId);
                         } else {
-                            const html = `
-                                <tbody id="player-group-${pName}" data-name="${pName}" class="player-group">
-                                    <tr onclick="openPlayerModal('${pName}', '${player.team}', ${pTime}, ${pVehicle}, ${pFrozen}, ${pUserId})" class="border-b border-slate-900/60 cursor-pointer hover:bg-slate-900/30 transition-colors">
-                                        <td class="py-3 pl-4 flex items-center gap-3">
-                                            <img id="avatar-${pName}" src="${BASE_URL}/api/avatar/${pUserId}" class="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800 shadow-sm flex-shrink-0">
-                                            <span class="text-sm text-slate-300">${pName}</span>
-                                        </td>
-                                        <td class="py-3">
-                                            <span id="team-${pName}" class="text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${player.team}</span>
-                                        </td>
-                                    </tr>
-                                </tbody>`;
+                            const html = `<tbody id="player-group-${pName}" data-name="${pName}" class="player-group"><tr onclick="openPlayerModal('${pName}', '${player.team}', ${pTime}, ${pVehicle}, ${pFrozen}, ${pUserId})" class="border-b border-slate-900/60 cursor-pointer hover:bg-slate-900/30 transition-colors"><td class="py-3 pl-4 flex items-center gap-3"><img src="${BASE_URL}/api/avatar/${pUserId}" class="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800 shadow-sm flex-shrink-0"><span class="text-sm text-slate-300">${pName}</span></td><td class="py-3"><span id="team-${pName}" class="text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${player.team}</span></td></tr></tbody>`;
                             tableMain.insertAdjacentHTML('beforeend', html);
+                        }
+
+                        const mapCoords = robloxToMapPx(pX, pZ);
+                        let existingMarker = document.getElementById(`marker-${pName}`);
+                        if(existingMarker) {
+                            existingMarker.style.left = mapCoords.x + 'px';
+                            existingMarker.style.top = mapCoords.y + 'px';
+                            existingMarker.onclick = (e) => { e.stopPropagation(); openPlayerModal(pName, player.team, pTime, pVehicle, pFrozen, pUserId); };
+                        } else {
+                            let marker = document.createElement('div');
+                            marker.id = `marker-${pName}`;
+                            marker.className = 'player-marker';
+                            marker.setAttribute('data-name', pName);
+                            marker.style.left = mapCoords.x + 'px';
+                            marker.style.top = mapCoords.y + 'px';
+                            marker.onclick = (e) => { e.stopPropagation(); openPlayerModal(pName, player.team, pTime, pVehicle, pFrozen, pUserId); };
+                            marker.innerHTML = `<img src="${BASE_URL}/api/avatar/${pUserId}"><span>${pName}</span>`;
+                            mapInner.appendChild(marker);
                         }
                     });
                 }).catch(() => {});
         }
 
         function populateScheduleDropdowns() {
-            const now = new Date();
-            const dateInput = document.getElementById('schedDate');
-            const maxDate = new Date();
+            const now = new Date(), dateInput = document.getElementById('schedDate'), maxDate = new Date();
             maxDate.setDate(now.getDate() + 14);
-
-            dateInput.min = now.toISOString().split('T')[0];
-            dateInput.max = maxDate.toISOString().split('T')[0];
-            dateInput.value = dateInput.min;
-
-            const hoursSelect = document.getElementById('schedHour');
-            hoursSelect.innerHTML = '';
-            for(let i = 1; i <= 12; i++) {
-                hoursSelect.innerHTML += `<option value="${i}">${i}</option>`;
-            }
-            
-            let currentHour = now.getHours();
-            let ampm = currentHour >= 12 ? 'PM' : 'AM';
-            currentHour = currentHour % 12;
-            currentHour = currentHour ? currentHour : 12;
-            
-            hoursSelect.value = currentHour;
-            document.getElementById('schedAmpm').value = ampm;
-
-            const minsSelect = document.getElementById('schedMinute');
-            minsSelect.innerHTML = '';
-            for(let i = 0; i <= 59; i++) {
-                minsSelect.innerHTML += `<option value="${i}">${String(i).padStart(2, '0')}</option>`;
-            }
+            dateInput.min = now.toISOString().split('T')[0]; dateInput.max = maxDate.toISOString().split('T')[0]; dateInput.value = dateInput.min;
+            const hoursSelect = document.getElementById('schedHour'); hoursSelect.innerHTML = '';
+            for(let i = 1; i <= 12; i++) hoursSelect.innerHTML += `<option value="${i}">${i}</option>`;
+            let currentHour = now.getHours(); let ampm = currentHour >= 12 ? 'PM' : 'AM';
+            currentHour = currentHour % 12; currentHour = currentHour ? currentHour : 12;
+            hoursSelect.value = currentHour; document.getElementById('schedAmpm').value = ampm;
+            const minsSelect = document.getElementById('schedMinute'); minsSelect.innerHTML = '';
+            for(let i = 0; i <= 59; i++) minsSelect.innerHTML += `<option value="${i}">${String(i).padStart(2, '0')}</option>`;
             minsSelect.value = now.getMinutes();
         }
 
@@ -548,228 +525,108 @@
             if (!currentServerStartTime) return;
             const diff = Math.floor((Date.now() - currentServerStartTime) / 1000);
             if (diff < 0) return;
-            const h = Math.floor(diff / 3600);
-            const m = Math.floor((diff % 3600) / 60);
-            const s = diff % 60;
+            const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
             document.getElementById('modalServerUptime').innerText = `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
         }
 
         function openServerModal() {
             if (!activeServerCode) return;
-            populateScheduleDropdowns();
-            document.getElementById('serverModal').classList.remove('hidden');
-            updateUptimeDisplay();
+            populateScheduleDropdowns(); document.getElementById('serverModal').classList.remove('hidden'); updateUptimeDisplay();
             if(uptimeInterval) clearInterval(uptimeInterval);
             uptimeInterval = setInterval(updateUptimeDisplay, 1000);
         }
 
-        function closeServerModal() {
-            document.getElementById('serverModal').classList.add('hidden');
-            if(uptimeInterval) clearInterval(uptimeInterval);
-        }
+        function closeServerModal() { document.getElementById('serverModal').classList.add('hidden'); if(uptimeInterval) clearInterval(uptimeInterval); }
 
         function shutdownServer() {
-            if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("Action Denied! You must be On Duty.", true);
-                return;
-            }
-            if (!activeServerCode) return;
-            const confirmDecision = confirm("Are you sure you want to shut down this server?");
-            if (!confirmDecision) return;
-
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'shutdown', target: 'all', senderId: currentAdmin.userId })
-            }).then(async res => {
-                if(!res.ok) {
-                    createToast("Failed to send shutdown command.", true);
-                    return;
-                }
-                createToast("Server shutdown command sent.", true);
-                closeServerModal();
-                stopMonitoring();
+            if (adminDutyStatus !== "on_duty" || !currentAdmin) { createToast("Action Denied! You must be On Duty.", true); return; }
+            if (!activeServerCode || !confirm("Are you sure you want to shut down this server?")) return;
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'shutdown', target: 'all', senderId: currentAdmin.userId }) }).then(async res => {
+                if(!res.ok) return createToast("Failed to send shutdown command.", true);
+                createToast("Server shutdown command sent.", true); closeServerModal(); stopMonitoring();
             });
         }
 
         function scheduleShutdown() {
-            if (adminDutyStatus !== "on_duty" || !currentAdmin) {
-                createToast("Action Denied! You must be On Duty.", true);
-                return;
-            }
+            if (adminDutyStatus !== "on_duty" || !currentAdmin) { createToast("Action Denied! You must be On Duty.", true); return; }
             if (!activeServerCode) return;
-
             const dVal = document.getElementById('schedDate').value;
             let hVal = parseInt(document.getElementById('schedHour').value);
-            const mVal = parseInt(document.getElementById('schedMinute').value);
-            const ampm = document.getElementById('schedAmpm').value;
+            const mVal = parseInt(document.getElementById('schedMinute').value), ampm = document.getElementById('schedAmpm').value;
+            if(!dVal) { createToast("Please select a valid date.", true); return; }
+            if (ampm === 'PM' && hVal < 12) hVal += 12; if (ampm === 'AM' && hVal === 12) hVal = 0;
+            const targetTimestamp = new Date(`${dVal}T${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}:00`).getTime();
+            if (targetTimestamp <= Date.now()) { createToast("Please select a future time.", true); return; }
 
-            if(!dVal) {
-                createToast("Please select a valid date.", true);
-                return;
-            }
-
-            if (ampm === 'PM' && hVal < 12) hVal += 12;
-            if (ampm === 'AM' && hVal === 12) hVal = 0;
-
-            const targetDate = new Date(`${dVal}T${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}:00`);
-            const targetTimestamp = targetDate.getTime();
-
-            if (targetTimestamp <= Date.now()) {
-                createToast("Please select a future time.", true);
-                return;
-            }
-
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetTimestamp, senderId: currentAdmin.userId })
-            }).then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    createToast(data.error, true);
-                } else {
-                    createToast(data.message, true);
-                    document.getElementById('cancelScheduleBtn').classList.remove('hidden');
-                }
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetTimestamp, senderId: currentAdmin.userId }) }).then(res => res.json()).then(data => {
+                if (data.error) createToast(data.error, true); else { createToast(data.message, true); document.getElementById('cancelScheduleBtn').classList.remove('hidden'); }
             });
         }
 
         function cancelScheduledShutdown() {
             if (!activeServerCode || !currentAdmin) return;
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`, {
-                method: 'DELETE'
-            }).then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    createToast(data.error, true);
-                } else {
-                    createToast(data.message, true);
-                    document.getElementById('cancelScheduleBtn').classList.add('hidden');
-                    document.getElementById('modalServerSchedule').innerText = 'None';
-                }
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`, { method: 'DELETE' }).then(res => res.json()).then(data => {
+                if (data.error) createToast(data.error, true); else { createToast(data.message, true); document.getElementById('cancelScheduleBtn').classList.add('hidden'); document.getElementById('modalServerSchedule').innerText = 'None'; }
             });
         }
 
         function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
-            if (adminDutyStatus !== "on_duty") {
-                createToast("Action Denied! You must be On Duty.", true);
-                return;
-            }
+            if (adminDutyStatus !== "on_duty") { createToast("Action Denied! You must be On Duty.", true); return; }
             currentModalUserId = userId;
-            
-            document.getElementById('modalPlayerName').innerText = pName;
-            document.getElementById('modalPlayerTeam').innerText = team;
-            let h = Math.floor(timeInGame / 3600);
-            let m = Math.floor((timeInGame % 3600) / 60);
-            let s = Math.floor(timeInGame % 60);
+            document.getElementById('modalPlayerName').innerText = pName; document.getElementById('modalPlayerTeam').innerText = team;
+            let h = Math.floor(timeInGame / 3600), m = Math.floor((timeInGame % 3600) / 60), s = Math.floor(timeInGame % 60);
             document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
             document.getElementById('modalPlayerVehicle').innerText = inVehicle ? "Yes" : "No";
 
             const freezeBtn = document.getElementById('modalFreezeBtn');
-            if (isFrozen) {
-                freezeBtn.innerText = "Unfreeze";
-                freezeBtn.onclick = () => { sendAction(pName, 'unfreeze'); closePlayerModal(); };
-            } else {
-                freezeBtn.innerText = "Freeze";
-                freezeBtn.onclick = () => { sendAction(pName, 'freeze'); closePlayerModal(); };
-            }
+            if (isFrozen) { freezeBtn.innerText = "Unfreeze"; freezeBtn.onclick = () => { sendAction(pName, 'unfreeze'); closePlayerModal(); }; } 
+            else { freezeBtn.innerText = "Freeze"; freezeBtn.onclick = () => { sendAction(pName, 'freeze'); closePlayerModal(); }; }
 
             document.getElementById('modalKickBtn').onclick = () => { sendAction(pName, 'kick'); closePlayerModal(); };
             document.getElementById('modalBringBtn').onclick = () => { sendAction(pName, 'bring'); closePlayerModal(); };
             document.getElementById('modalToBtn').onclick = () => { sendAction(pName, 'to'); closePlayerModal(); };
             document.getElementById('modalBanConfirmBtn').onclick = () => sendBan(pName);
-
             document.getElementById('modalAvatar').src = `${BASE_URL}/api/avatar/${userId}`;
-
-            toggleModalBanForm(false);
-            document.getElementById('playerModal').classList.remove('hidden');
-
+            toggleModalBanForm(false); document.getElementById('playerModal').classList.remove('hidden');
             if (playerModalInterval) clearInterval(playerModalInterval);
             playerModalInterval = setInterval(fetchAndUpdateModalPlayer, 2000);
         }
 
         function fetchAndUpdateModalPlayer() {
             if (!currentAdmin || !currentModalUserId || !activeServerCode) return;
-
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
-                .then(res => res.json())
-                .then(player => {
-                    if (player.error) {
-                        document.getElementById('modalPlayerVehicle').innerText = "Player left server";
-                        clearInterval(playerModalInterval);
-                        return;
-                    }
-                    document.getElementById('modalPlayerTeam').innerText = player.team;
-                    let h = Math.floor(player.timeInGame / 3600);
-                    let m = Math.floor((player.timeInGame % 3600) / 60);
-                    let s = Math.floor(player.timeInGame % 60);
-                    document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
-                    document.getElementById('modalPlayerVehicle').innerText = player.inVehicle ? "Yes" : "No";
-                    
-                    const freezeBtn = document.getElementById('modalFreezeBtn');
-                    if (player.isFrozen) {
-                        freezeBtn.innerText = "Unfreeze";
-                        freezeBtn.onclick = () => { sendAction(player.name, 'unfreeze'); closePlayerModal(); };
-                    } else {
-                        freezeBtn.innerText = "Freeze";
-                        freezeBtn.onclick = () => { sendAction(player.name, 'freeze'); closePlayerModal(); };
-                    }
-                }).catch(() => {});
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`).then(res => res.json()).then(player => {
+                if (player.error) { document.getElementById('modalPlayerVehicle').innerText = "Player left"; clearInterval(playerModalInterval); return; }
+                document.getElementById('modalPlayerTeam').innerText = player.team;
+                let h = Math.floor(player.timeInGame / 3600), m = Math.floor((player.timeInGame % 3600) / 60), s = Math.floor(player.timeInGame % 60);
+                document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+                document.getElementById('modalPlayerVehicle').innerText = player.inVehicle ? "Yes" : "No";
+                const freezeBtn = document.getElementById('modalFreezeBtn');
+                if (player.isFrozen) { freezeBtn.innerText = "Unfreeze"; freezeBtn.onclick = () => { sendAction(player.name, 'unfreeze'); closePlayerModal(); }; } 
+                else { freezeBtn.innerText = "Freeze"; freezeBtn.onclick = () => { sendAction(player.name, 'freeze'); closePlayerModal(); }; }
+            }).catch(() => {});
         }
 
-        function closePlayerModal() {
-            document.getElementById('playerModal').classList.add('hidden');
-            if (playerModalInterval) {
-                clearInterval(playerModalInterval);
-                playerModalInterval = null;
-            }
-            currentModalUserId = null;
-        }
+        function closePlayerModal() { document.getElementById('playerModal').classList.add('hidden'); if (playerModalInterval) { clearInterval(playerModalInterval); playerModalInterval = null; } currentModalUserId = null; }
 
         function toggleModalBanForm(show) {
-            const form = document.getElementById('modalBanForm');
-            const tabBtn = document.getElementById('modalBanTabBtn');
-            if (show) {
-                form.classList.replace('hidden', 'flex');
-                tabBtn.classList.add('hidden');
-            } else {
-                form.classList.replace('flex', 'hidden');
-                tabBtn.classList.remove('hidden');
-                document.getElementById('modalBanReason').value = '';
-                document.getElementById('modalBanDuration').value = '';
-            }
+            const form = document.getElementById('modalBanForm'), tabBtn = document.getElementById('modalBanTabBtn');
+            if (show) { form.classList.replace('hidden', 'flex'); tabBtn.classList.add('hidden'); } 
+            else { form.classList.replace('flex', 'hidden'); tabBtn.classList.remove('hidden'); document.getElementById('modalBanReason').value = ''; document.getElementById('modalBanDuration').value = ''; }
         }
 
         function sendAction(playerName, actionType) {
             if (adminDutyStatus !== "on_duty" || !currentAdmin || !activeServerCode) return;
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: actionType, target: playerName, senderId: currentAdmin.userId })
-            }).then(async res => {
-                if(!res.ok) {
-                    const err = await res.json();
-                    createToast(`Error: ${err.error}`, true);
-                    return;
-                }
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: actionType, target: playerName, senderId: currentAdmin.userId }) }).then(async res => {
+                if(!res.ok) { const err = await res.json(); createToast(`Error: ${err.error}`, true); return; }
                 createToast(`Command executed successfully.`, true);
             });
         }
 
         function sendBan(playerName) {
             if (adminDutyStatus !== "on_duty" || !currentAdmin || !activeServerCode) return;
-            const reasonText = document.getElementById('modalBanReason').value.trim() || "Rules Violation";
-            const durationText = document.getElementById('modalBanDuration').value.trim() || "-1";
-            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ban', target: playerName, reason: reasonText, duration: durationText, senderId: currentAdmin.userId })
-            }).then(async res => {
-                if(!res.ok) {
-                    createToast("Failed to execute Ban.", true);
-                    return;
-                }
+            const reasonText = document.getElementById('modalBanReason').value.trim() || "Rules Violation", durationText = document.getElementById('modalBanDuration').value.trim() || "-1";
+            fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ban', target: playerName, reason: reasonText, duration: durationText, senderId: currentAdmin.userId }) }).then(async res => {
+                if(!res.ok) return createToast("Failed to execute Ban.", true);
                 createToast(`Ban executed successfully.`, true);
             });
         }
