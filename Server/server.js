@@ -22,7 +22,8 @@ const ALLOWED_ADMINS = [
 ];
 
 const INGAME_MODS = [
-    2748615471
+    2748615471,
+    9801416277
 ];
 
 let liveServers = {};      
@@ -123,9 +124,9 @@ app.get('/api/auth/status', (req, res) => {
     const session = oauthStates[state];
     if (session.status === "success") {
         const userId = session.adminData.userId;
-        let role = "user";
-        if (ALLOWED_ADMINS.includes(userId)) role = "admin";
-        else if (INGAME_MODS.includes(userId)) role = "mod";
+        let role = "mod";
+      //  if (ALLOWED_ADMINS.includes(userId)) role = "admin";
+     //   else if (INGAME_MODS.includes(userId)) role = "mod";
 
         session.role = role;
 
