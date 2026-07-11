@@ -7,7 +7,6 @@ require("dotenv").config({
 });
 
 const app = express();
-// تم زيادة الحد الأقصى للـ JSON لاستيعاب بيانات الخريطة القادمة من روبلوكس
 app.use(express.json({ limit: '50mb' }));
 const frontendPath = path.join(__dirname, '..', 'Frontend');
 app.use(express.static(frontendPath));
@@ -38,6 +37,7 @@ function smartRateLimiter(req, res, next) {
     }
     
     rateLimits[ip] = rateLimits[ip].filter(timestamp => now - timestamp < 10000);
+    
     if (rateLimits[ip].length > 45) {
         return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -48,6 +48,7 @@ function smartRateLimiter(req, res, next) {
 
 function verifyAdminAccess(req, res, next) {
     const adminId = parseInt(req.body?.senderId || req.body?.userId || req.query?.senderId || req.query?.userId);
+    
     if (!adminId || isNaN(adminId) || !ALLOWED_ADMINS.includes(adminId)) {
         return res.status(403).json({ error: "Unauthorized access" });
     }
@@ -132,7 +133,7 @@ app.post('/api/admin/duty', verifyAdminAccess, (req, res) => {
     if (!activeAdmins[adminId]) {
         activeAdmins[adminId] = {
             userId: adminId,
-            username: username || "Admin",
+            username: username,
             status: "Online",
             serverCode: null,
             updatedAt: new Date().toISOString(),
@@ -183,7 +184,7 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
         if (!activeAdmins[currentUserId]) {
             activeAdmins[currentUserId] = {
                 userId: currentUserId,
-                username: currentUsername || "Admin",
+                username: currentUsername,
                 status: "Online",
                 serverCode: null,
                 updatedAt: new Date().toISOString(),
@@ -212,7 +213,6 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
     res.json({ staff: staffArr });
 });
 
-// Endpoint لاستقبال بيانات الماب من سيرفر روبلوكس
 app.post('/api/servers/:serverCode/map', (req, res) => {
     const { serverCode } = req.params;
     const authHeader = req.headers['authorization'];
@@ -229,7 +229,6 @@ app.post('/api/servers/:serverCode/map', (req, res) => {
     res.json({ success: true });
 });
 
-// Endpoint للواجهة الأمامية لجلب بيانات الماب
 app.get('/api/servers/:serverCode/map', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
     const server = liveServers[serverCode];
@@ -275,7 +274,7 @@ app.post('/api/servers/:serverCode/heartbeat', (req, res) => {
 
 app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
     const { serverCode } = req.params;
-    const { action, target, reason, duration, senderId } = req.body;
+    const { action, target, targetId, reason, duration, senderId } = req.body;
 
     const admin = activeAdmins[senderId];
     if (!admin) return res.status(403).json({ error: "Admin not found" });
@@ -287,7 +286,7 @@ app.post('/api/servers/:serverCode/commands', verifyAdminAccess, (req, res) => {
     }
 
     if (!commandsQueue[serverCode]) commandsQueue[serverCode] = [];
-    commandsQueue[serverCode].push({ action, target, reason, duration, senderId });
+    commandsQueue[serverCode].push({ action, target, targetId, reason, duration, senderId, senderName: admin.username });
     
     res.json({ success: true });
 });
@@ -391,8 +390,9 @@ setInterval(() => {
                     target: "all",
                     reason: "Scheduled",
                     duration: 0,
-                    senderId: scheduledShutdowns[serverCode].senderId
-                 });
+                    senderId: scheduledShutdowns[serverCode].senderId,
+                    senderName: activeAdmins[scheduledShutdowns[serverCode].senderId]?.username || "System"
+                });
                 delete scheduledShutdowns[serverCode];
             }
         }

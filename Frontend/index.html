@@ -21,7 +21,15 @@
         }
         button:active { transform: scale(0.97); }
         
-        /* كلاسات خاصة بالـ Minimap */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
         #minimap-container {
             cursor: grab;
             overflow: hidden;
@@ -42,7 +50,7 @@
 
     <div id="loginScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center">
         <div class="panel p-6 rounded-lg border border-slate-800 text-center max-w-sm w-full shadow-2xl">
-            <p class="text-slate-300 text-sm mb-4">Please sign in to access the manager dashboard.</p>
+            <p class="text-slate-300 text-sm mb-4">Please sign in to access the dashboard</p>
             <button onclick="startRobloxOAuth()" class="text-blue-500 hover:text-blue-400 text-sm underline transition-colors">Sign in</button>
             <div id="authStatusText" class="text-xs text-slate-500 mt-4 hidden"></div>
         </div>
@@ -116,10 +124,11 @@
                 <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">Bring</button>
                 <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">To Player</button>
             </div>
-            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban from Server</button>
+            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban</button>
             <div id="modalBanForm" class="hidden flex-col gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                <input id="modalBanReason" type="text" placeholder="Ban reason..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <input id="modalBanDuration" type="number" placeholder="Duration in seconds..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                <input id="modalBanReason" type="text" placeholder="Ban reason" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                <input id="modalBanDuration" type="number" placeholder="Duration in seconds" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                <span id="banDurationCalc" class="text-xs text-amber-400 mt-1 block h-4"></span>
                 <div class="flex gap-2 mt-1">
                     <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs transition-colors">Confirm Ban</button>
                     <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800 transition-colors">Cancel</button>
@@ -139,7 +148,7 @@
         </div>
         
         <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <input id="serverCodeInput" type="text" placeholder="Server Code" class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300 uppercase">
+            <input id="serverCodeInput" type="text" placeholder="Server Code" class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300">
             <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
             <button id="moderateServerBtn" onclick="openServerModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Moderate Server</button>
         </div>
@@ -162,13 +171,13 @@
 
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-3 text-slate-300">Staff Status</h2>
-                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">Enter a server code to view active staff...</div>
+                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">connect to a server to view active staff</div>
             </div>
 
             <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
                 <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
                 <div id="teamsContainer" class="space-y-2 text-xs overflow-y-auto flex-1">
-                    <p class="text-slate-600 text-center py-4">Waiting for server connection...</p>
+                    <p class="text-slate-600 text-center py-4">Waiting for server connection</p>
                 </div>
             </div>
         </div>
@@ -195,7 +204,7 @@
 
     <div class="panel rounded-xl shadow-lg mt-6 flex flex-col relative w-full h-[600px] border border-slate-700">
         <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
-            <h2 class="text-sm font-semibold text-slate-300">Live Minimap</h2>
+            <h2 class="text-sm font-semibold text-slate-300">Minimap</h2>
             <div class="text-xs text-slate-500 flex gap-4">
                 <span>Scroll: Zoom</span>
                 <span>Drag: Pan</span>
@@ -208,6 +217,7 @@
 
     <script>
         const BASE_URL = window.location.origin;
+
         let autoFetchInterval = null;
         let staffInterval = null;
         let uptimeInterval = null;
@@ -218,15 +228,13 @@
         let activeServerCode = null;
         let currentServerStartTime = 0;
         let lastSoundTime = 0;
-        let cachedPlayersList = []; // لحفظ اللاعبين لرسمهم على الخريطة
+        let cachedPlayersList = [];
 
-        // 🗺️ Minimap Variables
         const minimapContainer = document.getElementById('minimap-container');
         const minimapCanvas = document.getElementById('minimapCanvas');
         const ctx = minimapCanvas.getContext('2d');
         let rawMapData = null; 
         let avatarCache = {};
-        
         let camera = { x: 0, y: 0, zoom: 1 };
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
@@ -327,12 +335,12 @@
             const codeToUse = activeServerCode || document.getElementById('serverCodeInput').value.trim();
 
             if (actionType === "start" && !codeToUse) {
-                createToast("You must connect to a server first!", true);
+                createToast("You must connect to a server first", true);
                 return;
             }
 
             if (actionType === "break" && adminDutyStatus !== "on_duty") {
-                createToast("You cannot take a break without starting your shift first!", true);
+                createToast("You cannot take a break without starting your shift first", true);
                 return;
             }
 
@@ -344,7 +352,7 @@
             .then(async res => {
                 const data = await res.json();
                 if (!res.ok) {
-                    createToast(data.error || "Failed to update duty status.", true);
+                    createToast(data.error || "Failed to update duty status", true);
                     return;
                 }
                 
@@ -354,14 +362,14 @@
                 if (data.status === "on_duty") {
                     badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
                     badge.innerText = "On Duty";
-                    createToast("Your live admin shift has started successfully.", true);
+                    createToast("Your live admin shift has started successfully", true);
                 } else if (data.status === "break") {
                     badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
                     badge.innerText = "On Break";
-                    createToast("You are now on a temporary break.", true);
+                    createToast("You are now on a temporary break", true);
                 } else {
                     setDutyStatusOnline();
-                    createToast("Admin shift ended.", false);
+                    createToast("Admin shift ended", false);
                 }
                 fetchStaffData();
             });
@@ -420,16 +428,15 @@
 
             if (!activeServerCode) {
                 if (!inputVal) {
-                    createToast("Please enter server code first.", true);
+                    createToast("Please enter server code first", true);
                     return;
                 }
                 activeServerCode = inputVal;
                 document.getElementById('serverCodeInput').value = '';
                 
                 document.getElementById('liveBadge').classList.remove('hidden');
-                document.getElementById('noPlayersMessage').innerText = "Fetching live data...";
+                document.getElementById('noPlayersMessage').innerText = "Fetching live data";
                 
-                // جلب الماب قبل البدء
                 fetchMapData();
                 fetchData();
                 autoFetchInterval = setInterval(fetchData, 2000);
@@ -440,7 +447,7 @@
                 createToast("Connecting", false);
             } else {
                 stopMonitoring();
-                createToast("Live monitoring stopped.", false);
+                createToast("Live monitoring stopped", false);
             }
         }
 
@@ -465,14 +472,13 @@
             document.getElementById('totalPlayersCount').innerText = "0";
             document.getElementById('noPlayersMessage').classList.remove('hidden');
             document.getElementById('noPlayersMessage').innerText = "Please enter server code and connect";
-            document.getElementById('teamsContainer').innerHTML = '<p class="text-slate-600 text-center py-4">Waiting for server connection...</p>';
-            document.getElementById('staffContainer').innerHTML = 'Enter a server code to view active staff...';
+            document.getElementById('teamsContainer').innerHTML = '<p class="text-slate-600 text-center py-4">Waiting for server connection</p>';
+            document.getElementById('staffContainer').innerHTML = 'connect to a server to view active staff';
             if (adminDutyStatus === "on_duty") {
                 updateDuty('stop');
             }
         }
 
-        // 🗺️ جلب الخريطة
         function fetchMapData() {
             if (!activeServerCode || !currentAdmin) return;
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/map?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
@@ -484,31 +490,26 @@
             }).catch(() => {});
         }
 
-        // 🗺️ رسم الخريطة (الـ Minimap)
         function renderMinimap() {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
 
-            // نقطة المنتصف للكاميرا
             ctx.translate(minimapCanvas.width / 2 + camera.x, minimapCanvas.height / 2 + camera.y);
             ctx.scale(camera.zoom, camera.zoom);
 
-            // رسم بيئة الخريطة إذا كانت موجودة
             if (rawMapData && rawMapData.data) {
-                const drawSize = rawMapData.step * 1.1; // * 1.1 بناءً على طلبك لزيادة التغطية والواقعية
+                const drawSize = rawMapData.step * 1.1;
                 rawMapData.data.forEach(p => {
                     ctx.fillStyle = p.c;
                     ctx.fillRect(p.x, p.z, drawSize, drawSize);
                 });
             }
 
-            // رسم اللاعبين
             cachedPlayersList.forEach(p => {
                 if(p.pos) {
                     const px = p.pos.x;
                     const pz = p.pos.z;
 
-                    // رسم خلفية دائرية (Avatar Frame)
                     ctx.beginPath();
                     ctx.arc(px, pz, 15, 0, Math.PI * 2);
                     ctx.fillStyle = p.team === "Civilians" ? "#cbd5e1" : "#3b82f6";
@@ -517,7 +518,6 @@
                     ctx.strokeStyle = "#0f172a";
                     ctx.stroke();
 
-                    // محاولة رسم الصورة الشخصية
                     if(!avatarCache[p.userId]) {
                         const img = new Image();
                         img.src = `${BASE_URL}/api/avatar/${p.userId}`;
@@ -534,11 +534,9 @@
                         ctx.restore();
                     }
 
-                    // اسم اللاعب
                     ctx.font = "bold 12px sans-serif";
                     const textW = ctx.measureText(p.name).width;
                     
-                    // خلفية الاسم
                     ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
                     ctx.fillRect(px - textW/2 - 4, pz + 20, textW + 8, 16);
                     
@@ -548,19 +546,16 @@
                     ctx.fillText(p.name, px, pz + 28);
                 }
             });
-
             requestAnimationFrame(renderMinimap);
         }
         
-        // تشغيل حلقة الرسم
         requestAnimationFrame(renderMinimap);
 
-        // التحكم بالماوس للخريطة
         minimapContainer.addEventListener('mousedown', e => {
             isDragging = true;
             dragStart = { x: e.clientX - camera.x, y: e.clientY - camera.y };
         });
-        
+
         minimapContainer.addEventListener('mousemove', e => {
             if(!isDragging) return;
             camera.x = e.clientX - dragStart.x;
@@ -570,25 +565,21 @@
         minimapContainer.addEventListener('mouseup', () => isDragging = false);
         minimapContainer.addEventListener('mouseleave', () => isDragging = false);
 
-        // Zoom in/out بالسكرول
         minimapContainer.addEventListener('wheel', e => {
             e.preventDefault();
             const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
             camera.zoom *= zoomAmount;
-            // حماية من الزوم المبالغ فيه
             if(camera.zoom < 0.1) camera.zoom = 0.1;
             if(camera.zoom > 5) camera.zoom = 5;
         });
 
-        // النقر على لاعب في الخريطة لفتح النافذة
         minimapContainer.addEventListener('click', e => {
-            if(isDragging && (Math.abs(e.clientX - dragStart.x - camera.x) > 5 || Math.abs(e.clientY - dragStart.y - camera.y) > 5)) return; // تجاهل الكليك لو كان سحب
+            if(isDragging && (Math.abs(e.clientX - dragStart.x - camera.x) > 5 || Math.abs(e.clientY - dragStart.y - camera.y) > 5)) return;
             
             const rect = minimapCanvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // تحويل الإحداثيات من الشاشة إلى عالم اللعبة
             const worldX = (mouseX - (minimapCanvas.width / 2 + camera.x)) / camera.zoom;
             const worldZ = (mouseY - (minimapCanvas.height / 2 + camera.y)) / camera.zoom;
 
@@ -597,7 +588,6 @@
                 if(p.pos) {
                     const dx = worldX - p.pos.x;
                     const dz = worldZ - p.pos.z;
-                    // تحقق ما إذا كانت النقرة قريبة من الإحداثيات (دائرة بنصف قطر تقريبي 20)
                     if(dx*dx + dz*dz <= 400) {
                         openPlayerModal(p.name, p.team, p.timeInGame, p.inVehicle, p.isFrozen, p.userId);
                         break;
@@ -606,18 +596,18 @@
             }
         });
 
-
         function fetchData() {
             if (!activeServerCode || !currentAdmin) return;
+
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/players?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
                 .then(res => {
                     if (res.status === 403) {
-                        createToast("Access Denied: You are not an authorized administrator.", true);
+                        createToast("Access Denied", true);
                         stopMonitoring();
                         throw new Error("Unauthorized");
                     }
                     if (!res.ok) {
-                        createToast("Server has been shutdown or unavailable.", true);
+                        createToast("server has been shutdown or unavaiable", true);
                         stopMonitoring();
                         throw new Error("Fetch failed");
                     }
@@ -629,7 +619,7 @@
                     currentServerStartTime = data.startTime || 0;
                     document.getElementById('totalPlayersCount').innerText = data.totalPlayers || 0;
                     const playersList = data.players || [];
-                    cachedPlayersList = playersList; // لحفظ اللاعبين للخريطة
+                    cachedPlayersList = playersList;
                     
                     if (data.scheduledShutdown) {
                         document.getElementById('modalServerSchedule').innerText = data.scheduledShutdown.time;
@@ -762,16 +752,17 @@
             if (!activeServerCode) return;
             const confirmDecision = confirm("Are you sure you want to shut down this server?");
             if (!confirmDecision) return;
+
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'shutdown', target: 'all', senderId: currentAdmin.userId })
             }).then(async res => {
                 if(!res.ok) {
-                    createToast("Failed to send shutdown command.", true);
+                    createToast("Failed to send shutdown command", true);
                     return;
                 }
-                createToast("Server shutdown command sent.", true);
+                createToast("Server shutdown command sent", true);
                 closeServerModal();
                 stopMonitoring();
             });
@@ -788,6 +779,7 @@
             let hVal = parseInt(document.getElementById('schedHour').value);
             const mVal = parseInt(document.getElementById('schedMinute').value);
             const ampm = document.getElementById('schedAmpm').value;
+
             if(!dVal) {
                 createToast("Please select a valid date.", true);
                 return;
@@ -800,7 +792,7 @@
             const targetTimestamp = targetDate.getTime();
 
             if (targetTimestamp <= Date.now()) {
-                createToast("Please select a future time.", true);
+                createToast("Please select a future time", true);
                 return;
             }
 
@@ -834,6 +826,23 @@
                 }
             });
         }
+
+        document.getElementById('modalBanDuration').addEventListener('input', function(e) {
+            const val = parseInt(e.target.value);
+            const calcSpan = document.getElementById('banDurationCalc');
+            if (isNaN(val)) {
+                calcSpan.innerText = "";
+                return;
+            }
+            if (val === -1) {
+                calcSpan.innerText = "Permanent";
+                return;
+            }
+            if (val < 60) calcSpan.innerText = val + " Seconds";
+            else if (val < 3600) calcSpan.innerText = (val / 60).toFixed(1) + " Minutes";
+            else if (val < 86400) calcSpan.innerText = (val / 3600).toFixed(1) + " Hours";
+            else calcSpan.innerText = (val / 86400).toFixed(1) + " Days";
+        });
 
         function openPlayerModal(pName, team, timeInGame, inVehicle, isFrozen, userId) {
             if (adminDutyStatus !== "on_duty") {
@@ -875,6 +884,7 @@
 
         function fetchAndUpdateModalPlayer() {
             if (!currentAdmin || !currentModalUserId || !activeServerCode) return;
+
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/players/${currentModalUserId}?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`)
                 .then(res => res.json())
                 .then(player => {
@@ -888,7 +898,6 @@
                     let m = Math.floor((player.timeInGame % 3600) / 60);
                     let s = Math.floor(player.timeInGame % 60);
                     document.getElementById('modalPlayerTime').innerText = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
-                    
                     document.getElementById('modalPlayerVehicle').innerText = player.inVehicle ? "Yes" : "No";
                     
                     const freezeBtn = document.getElementById('modalFreezeBtn');
@@ -922,6 +931,7 @@
                 tabBtn.classList.remove('hidden');
                 document.getElementById('modalBanReason').value = '';
                 document.getElementById('modalBanDuration').value = '';
+                document.getElementById('banDurationCalc').innerText = '';
             }
         }
 
@@ -930,31 +940,31 @@
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: actionType, target: playerName, senderId: currentAdmin.userId })
+                body: JSON.stringify({ action: actionType, target: playerName, targetId: currentModalUserId, senderId: currentAdmin.userId })
             }).then(async res => {
                 if(!res.ok) {
                     const err = await res.json();
                     createToast(`Error: ${err.error}`, true);
                     return;
                 }
-                createToast(`Command executed successfully.`, true);
+                createToast(`Command executed successfully`, true);
             });
         }
 
         function sendBan(playerName) {
             if (adminDutyStatus !== "on_duty" || !currentAdmin || !activeServerCode) return;
-            const reasonText = document.getElementById('modalBanReason').value.trim() || "Rules Violation";
+            const reasonText = document.getElementById('modalBanReason').value.trim() || "Violations";
             const durationText = document.getElementById('modalBanDuration').value.trim() || "-1";
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ban', target: playerName, reason: reasonText, duration: durationText, senderId: currentAdmin.userId })
+                body: JSON.stringify({ action: 'ban', target: playerName, targetId: currentModalUserId, reason: reasonText, duration: durationText, senderId: currentAdmin.userId })
             }).then(async res => {
                 if(!res.ok) {
-                    createToast("Failed to execute Ban.", true);
+                    createToast("Failed to execute Ban", true);
                     return;
                 }
-                createToast(`Ban executed successfully.`, true);
+                createToast(`Ban executed successfully`, true);
             });
         }
     </script>
