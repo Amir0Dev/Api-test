@@ -25,7 +25,7 @@ const INGAME_MODS = [
     2748615471,
     9801416277
 ];
-
+let globalTracking = {};
 let liveServers = {};      
 let commandsQueue = {};    
 let oauthStates = {};      
@@ -124,9 +124,9 @@ app.get('/api/auth/status', (req, res) => {
     const session = oauthStates[state];
     if (session.status === "success") {
         const userId = session.adminData.userId;
-        let role = "mod";
-      //  if (ALLOWED_ADMINS.includes(userId)) role = "admin";
-     //   else if (INGAME_MODS.includes(userId)) role = "mod";
+        let role = "user";
+        if (ALLOWED_ADMINS.includes(userId)) role = "admin";
+        else if (INGAME_MODS.includes(userId)) role = "mod";
 
         session.role = role;
 
@@ -393,26 +393,48 @@ app.post('/api/search/user', verifyAdminAccess, async (req, res) => {
         const displayName = userData.data[0].displayName;
         const realName = userData.data[0].name;
 
-        const presRes = await fetch("https://presence.roblox.com/v1/presence/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userIds: [userId] })
-        });
-        const presData = await presRes.json();
-        const presence = presData.userPresences && presData.userPresences[0] ? presData.userPresences[0] : { userPresenceType: 0 };
+        // التحقق إذا اللاعب موجود في داتا الـ API
+        const trackInfo = globalTracking[userId];
+        const isInGame = !!trackInfo;
+        const jobId = isInGame ? trackInfo.jobId : null;
 
         res.json({
             userId,
             username: realName,
             displayName,
-            presenceType: presence.userPresenceType,
-            placeId: presence.placeId,
-            gameId: presence.gameId
+            isInGame,
+            jobId
         });
     } catch (error) {
         res.status(500).json({ error: "Failed to search user" });
     }
 });
+
+
+app.post('/api/tracking/join', (req, res) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    const { userId, username, jobId } = req.body;
+    if (userId && jobId) {
+        globalTracking[userId] = { username, jobId, joinedAt: Date.now() };
+    }
+    res.json({ success: true });
+});
+
+app.post('/api/tracking/leave', (req, res) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    const { userId } = req.body;
+    if (userId && globalTracking[userId]) {
+        delete globalTracking[userId];
+    }
+    res.json({ success: true });
+});
+
 
 app.get('/api/avatar/:userId', async (req, res) => {
     try {
