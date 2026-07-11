@@ -21,6 +21,10 @@ const ALLOWED_ADMINS = [
     9801416277,
 ];
 
+const INGAME_MODS = [
+    2748615471
+];
+
 let liveServers = {};      
 let commandsQueue = {};    
 let oauthStates = {};      
@@ -49,7 +53,7 @@ function smartRateLimiter(req, res, next) {
 function verifyAdminAccess(req, res, next) {
     const adminId = parseInt(req.body?.senderId || req.body?.userId || req.query?.senderId || req.query?.userId);
     
-    if (!adminId || isNaN(adminId) || !ALLOWED_ADMINS.includes(adminId)) {
+    if (!adminId || isNaN(adminId) || (!ALLOWED_ADMINS.includes(adminId) && !INGAME_MODS.includes(adminId))) {
         return res.status(403).json({ error: "Unauthorized access" });
     }
     
@@ -115,7 +119,28 @@ app.get('/oauth/callback', async (req, res) => {
 app.get('/api/auth/status', (req, res) => {
     const { state } = req.query;
     if (!state || !oauthStates[state]) return res.json({ status: "unknown" });
-    res.json(oauthStates[state]);
+    
+    const session = oauthStates[state];
+    if (session.status === "success") {
+        const userId = session.adminData.userId;
+        let role = "user";
+        if (ALLOWED_ADMINS.includes(userId)) role = "admin";
+        else if (INGAME_MODS.includes(userId)) role = "mod";
+
+        session.role = role;
+
+        if ((role === "admin" || role === "mod") && !activeAdmins[userId]) {
+            activeAdmins[userId] = {
+                userId: userId,
+                username: session.adminData.username,
+                status: "Online",
+                serverCode: null,
+                updatedAt: new Date().toISOString(),
+                lastSeen: Date.now()
+            };
+        }
+    }
+    res.json(session);
 });
 
 app.post('/api/admin/disconnect', (req, res) => {
@@ -180,7 +205,7 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
     const currentUsername = req.query.username;
     const now = Date.now();
 
-    if (currentUserId && ALLOWED_ADMINS.includes(currentUserId)) {
+    if (currentUserId && (ALLOWED_ADMINS.includes(currentUserId) || INGAME_MODS.includes(currentUserId))) {
         if (!activeAdmins[currentUserId]) {
             activeAdmins[currentUserId] = {
                 userId: currentUserId,
@@ -200,7 +225,7 @@ app.get('/api/admin/staff', verifyAdminAccess, (req, res) => {
 
     Object.keys(activeAdmins).forEach(userId => {
         const idNum = parseInt(userId);
-        if (!ALLOWED_ADMINS.includes(idNum) || !activeAdmins[userId].lastSeen || now - activeAdmins[userId].lastSeen > 25000) {
+        if ((!ALLOWED_ADMINS.includes(idNum) && !INGAME_MODS.includes(idNum)) || !activeAdmins[userId].lastSeen || now - activeAdmins[userId].lastSeen > 25000) {
             delete activeAdmins[userId];
         }
     });
@@ -348,6 +373,44 @@ app.get('/api/servers/:serverCode/players/:playerId', verifyAdminAccess, (req, r
     if (!player) return res.status(404).json({ error: "Player not found" });
 
     res.json(player);
+});
+
+app.post('/api/search/user', verifyAdminAccess, async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: "Username required" });
+
+    try {
+        const userRes = await fetch("https://users.roblox.com/v1/usernames/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
+        });
+        const userData = await userRes.json();
+        if (!userData.data || userData.data.length === 0) return res.status(404).json({ error: "User not found" });
+        
+        const userId = userData.data[0].id;
+        const displayName = userData.data[0].displayName;
+        const realName = userData.data[0].name;
+
+        const presRes = await fetch("https://presence.roblox.com/v1/presence/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userIds: [userId] })
+        });
+        const presData = await presRes.json();
+        const presence = presData.userPresences && presData.userPresences[0] ? presData.userPresences[0] : { userPresenceType: 0 };
+
+        res.json({
+            userId,
+            username: realName,
+            displayName,
+            presenceType: presence.userPresenceType,
+            placeId: presence.placeId,
+            gameId: presence.gameId
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to search user" });
+    }
 });
 
 app.get('/api/avatar/:userId', async (req, res) => {

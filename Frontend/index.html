@@ -56,164 +56,202 @@
         </div>
     </div>
 
-    <div id="serverModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
-        <div class="panel p-6 rounded-xl max-w-sm w-full space-y-4 shadow-2xl border border-slate-700 relative bg-[#0f172a]">
-            <button onclick="closeServerModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-400 text-lg">✕</button>
-            <h3 class="text-lg font-bold text-slate-100 mb-2">Moderate Server</h3>
-            
-            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
-                <div class="flex justify-between"><span>Server Uptime:</span><span id="modalServerUptime" class="text-slate-400 font-mono">00h 00m 00s</span></div>
-                <div class="flex justify-between items-center">
-                    <span>Scheduled Shutdown:</span>
-                    <div class="flex gap-2 items-center">
-                        <span id="modalServerSchedule" class="text-amber-500 text-xs">None</span>
-                        <button id="cancelScheduleBtn" onclick="cancelScheduledShutdown()" class="hidden bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-2 py-1 rounded text-[10px] transition-all">Cancel</button>
-                    </div>
-                </div>
-            </div>
+    <div id="roleMenuScreen" class="fixed inset-0 bg-[#090d16] z-50 flex items-center justify-center hidden">
+        <div class="panel p-6 rounded-lg border border-slate-800 text-center max-w-sm w-full shadow-2xl space-y-4">
+            <h2 class="text-xl font-bold text-slate-100">You are in-game mod</h2>
+            <button onclick="showSearchScreen()" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 border border-blue-800/50 py-3 rounded-lg transition-colors">Users Search</button>
+            <button onclick="showDashboard()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-3 rounded-lg transition-colors">Dashboard</button>
+        </div>
+    </div>
 
-            <button onclick="shutdownServer()" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Immediate Server Shutdown</button>
-            
-            <div class="border-t border-slate-800 my-4 pt-4 space-y-3">
-                <label class="text-xs text-slate-300 font-semibold block">Schedule Shutdown Time</label>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-[10px] text-slate-500 block mb-1">Select Date (Max 14 days)</label>
-                        <input type="date" id="schedDate" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">Hour</label>
-                            <select id="schedHour" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">Minute</label>
-                            <select id="schedMinute" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-500 block mb-1">AM / PM</label>
-                            <select id="schedAmpm" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                            </select>
-                        </div>
+    <div id="searchScreen" class="fixed inset-0 bg-[#090d16] z-50 flex flex-col items-center pt-20 hidden">
+        <div class="panel p-6 rounded-lg border border-slate-800 max-w-md w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-100">Users Search</h2>
+                <button onclick="showRoleMenu()" class="text-slate-500 hover:text-slate-400">✕</button>
+            </div>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="searchUsername" placeholder="Enter username" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-slate-700">
+                <button onclick="performSearch()" class="bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 px-4 py-2 rounded-lg text-sm border border-blue-800/50">Search</button>
+            </div>
+            <div id="searchResults" class="hidden flex flex-col items-center text-center space-y-3">
+                <img id="searchAvatar" src="" class="w-20 h-20 rounded-full border-2 border-slate-700 bg-slate-900 object-cover">
+                <div>
+                    <h3 id="searchDisplay" class="text-lg font-bold text-slate-100"></h3>
+                    <p id="searchUser" class="text-sm text-slate-400"></p>
+                </div>
+                <span id="searchStatus" class="text-xs px-2 py-1 rounded border"></span>
+                <div id="searchGameInfo" class="hidden w-full space-y-2 mt-2">
+                    <input type="text" id="searchLink" readonly class="w-full bg-slate-950 border border-slate-800 rounded text-xs px-2 py-2 text-slate-400">
+                    <div class="flex gap-2">
+                        <button onclick="copySearchLink()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded text-xs">Copy Link</button>
+                        <button id="searchJoinBtn" class="flex-1 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-400 py-2 rounded text-xs border border-emerald-800/50">Join Server</button>
                     </div>
                 </div>
-                <button onclick="scheduleShutdown()" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 border border-blue-800/50 text-xs py-2.5 rounded-lg transition-colors mt-2">Confirm Schedule</button>
             </div>
         </div>
     </div>
 
-    <div id="playerModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
-        <div class="panel p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl border border-slate-800">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
-                    <img id="modalAvatar" src="" class="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 object-cover">
-                    <span id="modalPlayerName"></span>
-                </h3>
-                <button onclick="closePlayerModal()" class="text-slate-500 hover:text-slate-400 text-lg">✕</button>
-            </div>
-            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
-                <div class="flex justify-between"><span>Team:</span><span id="modalPlayerTeam" class="text-slate-400"></span></div>
-                <div class="flex justify-between"><span>Time in Game:</span><span id="modalPlayerTime" class="text-slate-400 font-mono"></span></div>
-                <div class="flex justify-between"><span>In Vehicle:</span><span id="modalPlayerVehicle" class="text-slate-400"></span></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <button id="modalKickBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors">Kick</button>
-                <button id="modalFreezeBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors"></button>
-                <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">Bring</button>
-                <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">To Player</button>
-            </div>
-            <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban</button>
-            <div id="modalBanForm" class="hidden flex-col gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                <input id="modalBanReason" type="text" placeholder="Ban reason" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <input id="modalBanDuration" type="number" placeholder="Duration in seconds" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
-                <span id="banDurationCalc" class="text-xs text-amber-400 mt-1 block h-4"></span>
-                <div class="flex gap-2 mt-1">
-                    <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs transition-colors">Confirm Ban</button>
-                    <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800 transition-colors">Cancel</button>
+    <div id="dashboardMain" class="flex flex-col flex-1 w-full hidden">
+        <div id="serverModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
+            <div class="panel p-6 rounded-xl max-w-sm w-full space-y-4 shadow-2xl border border-slate-700 relative bg-[#0f172a]">
+                <button onclick="closeServerModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-400 text-lg">✕</button>
+                <h3 class="text-lg font-bold text-slate-100 mb-2">Moderate Server</h3>
+                
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
+                    <div class="flex justify-between"><span>Server Uptime:</span><span id="modalServerUptime" class="text-slate-400 font-mono">00h 00m 00s</span></div>
+                    <div class="flex justify-between items-center">
+                        <span>Scheduled Shutdown:</span>
+                        <div class="flex gap-2 items-center">
+                            <span id="modalServerSchedule" class="text-amber-500 text-xs">None</span>
+                            <button id="cancelScheduleBtn" onclick="cancelScheduledShutdown()" class="hidden bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 px-2 py-1 rounded text-[10px] transition-all">Cancel</button>
+                        </div>
+                    </div>
                 </div>
+
+                <button onclick="shutdownServer()" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Immediate Server Shutdown</button>
+                
+                <div class="border-t border-slate-800 my-4 pt-4 space-y-3">
+                    <label class="text-xs text-slate-300 font-semibold block">Schedule Shutdown Time</label>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] text-slate-500 block mb-1">Select Date (Max 14 days)</label>
+                            <input type="date" id="schedDate" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[10px] text-slate-500 block mb-1">Hour</label>
+                                <select id="schedHour" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-500 block mb-1">Minute</label>
+                                <select id="schedMinute" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"></select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-500 block mb-1">AM / PM</label>
+                                <select id="schedAmpm" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors">
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="scheduleShutdown()" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-400 border border-blue-800/50 text-xs py-2.5 rounded-lg transition-colors mt-2">Confirm Schedule</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="playerModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
+            <div class="panel p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl border border-slate-800">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
+                        <img id="modalAvatar" src="" class="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 object-cover">
+                        <span id="modalPlayerName"></span>
+                    </h3>
+                    <button onclick="closePlayerModal()" class="text-slate-500 hover:text-slate-400 text-lg">✕</button>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-2 text-sm text-slate-300">
+                    <div class="flex justify-between"><span>Team:</span><span id="modalPlayerTeam" class="text-slate-400"></span></div>
+                    <div class="flex justify-between"><span>Time in Game:</span><span id="modalPlayerTime" class="text-slate-400 font-mono"></span></div>
+                    <div class="flex justify-between"><span>In Vehicle:</span><span id="modalPlayerVehicle" class="text-slate-400"></span></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="modalKickBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors">Kick</button>
+                    <button id="modalFreezeBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors"></button>
+                    <button id="modalBringBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">Bring</button>
+                    <button id="modalToBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs py-2.5 rounded-lg transition-colors font-mono">To Player</button>
+                </div>
+                <button id="modalBanTabBtn" onclick="toggleModalBanForm(true)" class="w-full bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-xs py-2.5 rounded-lg transition-colors">Ban</button>
+                <div id="modalBanForm" class="hidden flex-col gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                    <input id="modalBanReason" type="text" placeholder="Ban reason" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                    <input id="modalBanDuration" type="number" placeholder="Duration in seconds" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+                    <span id="banDurationCalc" class="text-xs text-amber-400 mt-1 block h-4"></span>
+                    <div class="flex gap-2 mt-1">
+                        <button id="modalBanConfirmBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs transition-colors">Confirm Ban</button>
+                        <button onclick="toggleModalBanForm(false)" class="bg-slate-950 hover:bg-slate-900 text-slate-400 px-4 py-2 rounded-lg text-xs border border-slate-800 transition-colors">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 panel p-5 rounded-xl shadow-lg relative w-full">
+            <div class="flex items-center gap-4">
+                <div id="adminProfileHeader" class="hidden items-center gap-3 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl shadow-md">
+                    <img id="adminHeaderAvatar" src="" class="w-8 h-8 rounded-full border border-slate-700 object-cover">
+                    <span id="adminHeaderName" class="text-sm font-semibold text-slate-200"></span>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
+                <input id="serverCodeInput" type="text" placeholder="Server Code" class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300">
+                <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
+                <button id="moderateServerBtn" onclick="openServerModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Moderate Server</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch w-full">
+            <div class="space-y-6 flex flex-col justify-start">
+                <div class="panel rounded-xl p-5 shadow-lg space-y-4">
+                    <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                        <span>Duty Control</span>
+                        <span id="dutyStatusBadge" class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">Offline</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="updateDuty('start')" class="bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-900 text-emerald-400 text-xs py-2.5 rounded-lg font-medium transition-all">Start Shift</button>
+                        <button onclick="updateDuty('break')" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-900 text-amber-400 text-xs py-2.5 rounded-lg font-medium transition-all">Break</button>
+                        <button onclick="updateDuty('stop')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 text-xs py-2.5 rounded-lg font-medium transition-all">End Shift</button>
+                    </div>
+                </div>
+
+                <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
+                    <h2 class="text-sm font-semibold mb-3 text-slate-300">Staff Status</h2>
+                    <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">connect to a server to view active staff</div>
+                </div>
+
+                <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
+                    <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
+                    <div id="teamsContainer" class="space-y-2 text-xs overflow-y-auto flex-1">
+                        <p class="text-slate-600 text-center py-4">Waiting for server connection</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg h-full min-h-[400px]">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
+                    <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Connecting</span>
+                </div>
+                
+                <div class="overflow-x-auto flex-1 h-full">
+                    <table class="w-full text-left" id="mainTable">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500 text-xs">
+                                <th class="pb-3 pl-4 font-medium">Player Name</th>
+                                <th class="pb-3 font-medium">Team</th>
+                            </tr>
+                        </thead>
+                    </table>
+                    <div id="noPlayersMessage" class="text-sm text-slate-600 text-center py-12">Please enter server code and connect</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel rounded-xl shadow-lg mt-6 flex flex-col relative w-full h-[600px] border border-slate-700">
+            <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
+                <h2 class="text-sm font-semibold text-slate-300">Minimap</h2>
+                <div class="text-xs text-slate-500 flex gap-4">
+                    <span>Scroll: Zoom</span>
+                    <span>Drag: Pan</span>
+                </div>
+            </div>
+            <div id="minimap-container" class="flex-1 w-full rounded-b-xl">
+                <canvas id="minimapCanvas"></canvas>
             </div>
         </div>
     </div>
 
     <div id="notificationContainer" class="fixed bottom-6 left-6 z-50 space-y-3 w-80 pointer-events-none"></div>
-
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 panel p-5 rounded-xl shadow-lg relative">
-        <div class="flex items-center gap-4">
-            <div id="adminProfileHeader" class="hidden items-center gap-3 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl shadow-md">
-                <img id="adminHeaderAvatar" src="" class="w-8 h-8 rounded-full border border-slate-700 object-cover">
-                <span id="adminHeaderName" class="text-sm font-semibold text-slate-200"></span>
-            </div>
-        </div>
-        
-        <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <input id="serverCodeInput" type="text" placeholder="Server Code" class="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-center focus:outline-none focus:border-slate-600 transition-all w-full md:w-40 font-mono tracking-widest text-slate-300">
-            <button id="connectBtn" onclick="toggleAutoFetch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Connect</button>
-            <button id="moderateServerBtn" onclick="openServerModal()" class="hidden bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm transition-all w-full md:w-auto">Moderate Server</button>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch">
-        <div class="space-y-6 flex flex-col justify-start">
-            <div class="panel rounded-xl p-5 shadow-lg space-y-4">
-                <h2 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Duty Control</span>
-                    <span id="dutyStatusBadge" class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">Offline</span>
-                </h2>
-                
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="updateDuty('start')" class="bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-900 text-emerald-400 text-xs py-2.5 rounded-lg font-medium transition-all">Start Shift</button>
-                    <button onclick="updateDuty('break')" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-900 text-amber-400 text-xs py-2.5 rounded-lg font-medium transition-all">Break</button>
-                    <button onclick="updateDuty('stop')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 text-xs py-2.5 rounded-lg font-medium transition-all">End Shift</button>
-                </div>
-            </div>
-
-            <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
-                <h2 class="text-sm font-semibold mb-3 text-slate-300">Staff Status</h2>
-                <div id="staffContainer" class="space-y-2 overflow-y-auto pr-1 text-xs flex-1 text-slate-600 text-center py-4">connect to a server to view active staff</div>
-            </div>
-
-            <div class="panel rounded-xl p-5 shadow-lg flex-1 min-h-[160px] flex flex-col">
-                <h2 class="text-sm font-semibold mb-4 text-slate-300">Server Teams Summary</h2>
-                <div id="teamsContainer" class="space-y-2 text-xs overflow-y-auto flex-1">
-                    <p class="text-slate-600 text-center py-4">Waiting for server connection</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel rounded-xl p-6 lg:col-span-2 flex flex-col shadow-lg h-full min-h-[400px]">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-300">Players in Server (<span id="totalPlayersCount" class="font-mono text-slate-400">0</span>)</h2>
-                <span id="liveBadge" class="hidden bg-slate-900 text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-800 animate-pulse">Connecting</span>
-            </div>
-            
-            <div class="overflow-x-auto flex-1 h-full">
-                <table class="w-full text-left" id="mainTable">
-                    <thead>
-                        <tr class="border-b border-slate-800 text-slate-500 text-xs">
-                            <th class="pb-3 pl-4 font-medium">Player Name</th>
-                            <th class="pb-3 font-medium">Team</th>
-                        </tr>
-                    </thead>
-                </table>
-                <div id="noPlayersMessage" class="text-sm text-slate-600 text-center py-12">Please enter server code and connect</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="panel rounded-xl shadow-lg mt-6 flex flex-col relative w-full h-[600px] border border-slate-700">
-        <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
-            <h2 class="text-sm font-semibold text-slate-300">Minimap</h2>
-            <div class="text-xs text-slate-500 flex gap-4">
-                <span>Scroll: Zoom</span>
-                <span>Drag: Pan</span>
-            </div>
-        </div>
-        <div id="minimap-container" class="flex-1 w-full rounded-b-xl">
-            <canvas id="minimapCanvas"></canvas>
-        </div>
-    </div>
 
     <script>
         const BASE_URL = window.location.origin;
@@ -229,6 +267,7 @@
         let currentServerStartTime = 0;
         let lastSoundTime = 0;
         let cachedPlayersList = [];
+        let globalActionTime = 0;
 
         const minimapContainer = document.getElementById('minimap-container');
         const minimapCanvas = document.getElementById('minimapCanvas');
@@ -238,6 +277,15 @@
         let camera = { x: 0, y: 0, zoom: 1 };
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
+
+        function isRateLimited() {
+            if (Date.now() - globalActionTime < 1000) {
+                createToast("Please wait before doing that again", true);
+                return true;
+            }
+            globalActionTime = Date.now();
+            return false;
+        }
 
         function resizeCanvas() {
             minimapCanvas.width = minimapContainer.clientWidth;
@@ -255,7 +303,7 @@
 
         function playToastSound() {
             const now = Date.now();
-            if (now - lastSoundTime < 500) return;
+            if (now - lastSoundTime < 1000) return;
             lastSoundTime = now;
             try {
                 const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
@@ -304,6 +352,7 @@
         }
 
         function startRobloxOAuth() {
+            if (isRateLimited()) return;
             const state = generateRandomState();
             window.open(`${BASE_URL}/oauth/login?state=${state}`, '_blank');
             const checkInterval = setInterval(() => {
@@ -315,22 +364,101 @@
                             currentAdmin = data.adminData;
                             document.getElementById('loginScreen').classList.add('hidden');
                             
-                            const profileHeader = document.getElementById('adminProfileHeader');
-                            if (profileHeader) {
-                                document.getElementById('adminHeaderName').innerText = currentAdmin.username;
-                                document.getElementById('adminHeaderAvatar').src = `${BASE_URL}/api/avatar/${currentAdmin.userId}`;
-                                profileHeader.classList.remove('hidden');
-                                profileHeader.classList.add('flex');
+                            if (data.role === 'mod') {
+                                document.getElementById('roleMenuScreen').classList.remove('hidden');
+                            } else {
+                                showDashboard();
                             }
-                            setDutyStatusOnline();
-                        } else if (data.status === "unauthorized" || data.status === "failed") {
+                        } else if (data.status === "failed") {
                             clearInterval(checkInterval);
                         }
                     });
             }, 2000);
         }
 
+        function showDashboard() {
+            document.getElementById('roleMenuScreen').classList.add('hidden');
+            document.getElementById('searchScreen').classList.add('hidden');
+            document.getElementById('dashboardMain').classList.remove('hidden');
+            
+            const profileHeader = document.getElementById('adminProfileHeader');
+            if (profileHeader && currentAdmin) {
+                document.getElementById('adminHeaderName').innerText = currentAdmin.username;
+                document.getElementById('adminHeaderAvatar').src = `${BASE_URL}/api/avatar/${currentAdmin.userId}`;
+                profileHeader.classList.remove('hidden');
+                profileHeader.classList.add('flex');
+            }
+            setDutyStatusOnline();
+        }
+
+        function showRoleMenu() {
+            document.getElementById('searchScreen').classList.add('hidden');
+            document.getElementById('dashboardMain').classList.add('hidden');
+            document.getElementById('roleMenuScreen').classList.remove('hidden');
+        }
+
+        function showSearchScreen() {
+            document.getElementById('roleMenuScreen').classList.add('hidden');
+            document.getElementById('searchScreen').classList.remove('hidden');
+            document.getElementById('searchUsername').value = '';
+            document.getElementById('searchResults').classList.add('hidden');
+        }
+
+        function performSearch() {
+            if (isRateLimited()) return;
+            const uname = document.getElementById('searchUsername').value.trim();
+            if(!uname) return;
+
+            fetch(`${BASE_URL}/api/search/user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: uname, senderId: currentAdmin.userId })
+            }).then(res => res.json())
+            .then(data => {
+                if(data.error) {
+                    createToast(data.error, true);
+                    return;
+                }
+                document.getElementById('searchResults').classList.remove('hidden');
+                document.getElementById('searchAvatar').src = `${BASE_URL}/api/avatar/${data.userId}`;
+                document.getElementById('searchDisplay').innerText = data.displayName;
+                document.getElementById('searchUser').innerText = "@" + data.username;
+                
+                const statSpan = document.getElementById('searchStatus');
+                const gameInfo = document.getElementById('searchGameInfo');
+                gameInfo.classList.add('hidden');
+
+                if (data.presenceType === 1) {
+                    statSpan.innerText = "Online";
+                    statSpan.className = "text-xs px-2 py-1 rounded border border-blue-800 text-blue-400 bg-blue-900/30";
+                } else if (data.presenceType === 2) {
+                    statSpan.innerText = "In-Game";
+                    statSpan.className = "text-xs px-2 py-1 rounded border border-emerald-800 text-emerald-400 bg-emerald-900/30";
+                    gameInfo.classList.remove('hidden');
+                    const link = `roblox://experiences/start?placeId=${data.placeId}&gameInstanceId=${data.gameId}`;
+                    document.getElementById('searchLink').value = link;
+                    document.getElementById('searchJoinBtn').onclick = () => { window.location.href = link; };
+                } else if (data.presenceType === 3) {
+                    statSpan.innerText = "Studio";
+                    statSpan.className = "text-xs px-2 py-1 rounded border border-orange-800 text-orange-400 bg-orange-900/30";
+                } else {
+                    statSpan.innerText = "Offline";
+                    statSpan.className = "text-xs px-2 py-1 rounded border border-slate-700 text-slate-400 bg-slate-800/50";
+                }
+            }).catch(() => {
+                createToast("Search failed", true);
+            });
+        }
+
+        function copySearchLink() {
+            const link = document.getElementById('searchLink').value;
+            navigator.clipboard.writeText(link).then(() => {
+                createToast("Link copied");
+            });
+        }
+
         function updateDuty(actionType) {
+            if (isRateLimited()) return;
             if (!currentAdmin) return;
             const codeToUse = activeServerCode || document.getElementById('serverCodeInput').value.trim();
 
@@ -362,14 +490,11 @@
                 if (data.status === "on_duty") {
                     badge.className = "text-[10px] bg-emerald-950/40 text-emerald-400 px-2 py-0.5 rounded border border-emerald-900/50";
                     badge.innerText = "On Duty";
-                    createToast("Your live admin shift has started successfully", true);
                 } else if (data.status === "break") {
                     badge.className = "text-[10px] bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded border border-amber-900/50";
                     badge.innerText = "On Break";
-                    createToast("You are now on a temporary break", true);
                 } else {
                     setDutyStatusOnline();
-                    createToast("Admin shift ended", false);
                 }
                 fetchStaffData();
             });
@@ -422,6 +547,7 @@
         }
 
         function toggleAutoFetch() {
+            if (isRateLimited()) return;
             const inputVal = document.getElementById('serverCodeInput').value.trim();
             const connectBtn = document.getElementById('connectBtn');
             const modBtn = document.getElementById('moderateServerBtn');
@@ -444,10 +570,8 @@
                 connectBtn.innerText = "Disconnect";
                 connectBtn.className = "bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 px-5 py-2 rounded-lg text-sm transition-all";
                 modBtn.classList.remove('hidden');
-                createToast("Connecting", false);
             } else {
                 stopMonitoring();
-                createToast("Live monitoring stopped", false);
             }
         }
 
@@ -607,7 +731,7 @@
                         throw new Error("Unauthorized");
                     }
                     if (!res.ok) {
-                        createToast("server has been shutdown or unavaiable", true);
+                        createToast("Server has been shutdown or unavaiable", true);
                         stopMonitoring();
                         throw new Error("Fetch failed");
                     }
@@ -631,7 +755,7 @@
 
                     if (playersList.length === 0) {
                         document.getElementById('noPlayersMessage').classList.remove('hidden');
-                        document.getElementById('noPlayersMessage').innerText = "No players currently in this server.";
+                        document.getElementById('noPlayersMessage').innerText = "No players currently in this server";
                         document.querySelectorAll('.player-group').forEach(el => el.remove());
                         return;
                     }
@@ -745,6 +869,7 @@
         }
 
         function shutdownServer() {
+            if (isRateLimited()) return;
             if (adminDutyStatus !== "on_duty" || !currentAdmin) {
                 createToast("Action Denied! You must be On Duty.", true);
                 return;
@@ -769,6 +894,7 @@
         }
 
         function scheduleShutdown() {
+            if (isRateLimited()) return;
             if (adminDutyStatus !== "on_duty" || !currentAdmin) {
                 createToast("Action Denied! You must be On Duty.", true);
                 return;
@@ -812,6 +938,7 @@
         }
 
         function cancelScheduledShutdown() {
+            if (isRateLimited()) return;
             if (!activeServerCode || !currentAdmin) return;
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/schedule-shutdown?userId=${currentAdmin.userId}&senderId=${currentAdmin.userId}`, {
                 method: 'DELETE'
@@ -936,6 +1063,7 @@
         }
 
         function sendAction(playerName, actionType) {
+            if (isRateLimited()) return;
             if (adminDutyStatus !== "on_duty" || !currentAdmin || !activeServerCode) return;
             fetch(`${BASE_URL}/api/servers/${activeServerCode}/commands`, {
                 method: 'POST',
@@ -947,11 +1075,11 @@
                     createToast(`Error: ${err.error}`, true);
                     return;
                 }
-                createToast(`Command executed successfully`, true);
             });
         }
 
         function sendBan(playerName) {
+            if (isRateLimited()) return;
             if (adminDutyStatus !== "on_duty" || !currentAdmin || !activeServerCode) return;
             const reasonText = document.getElementById('modalBanReason').value.trim() || "Violations";
             const durationText = document.getElementById('modalBanDuration').value.trim() || "-1";
@@ -964,7 +1092,6 @@
                     createToast("Failed to execute Ban", true);
                     return;
                 }
-                createToast(`Ban executed successfully`, true);
             });
         }
     </script>
